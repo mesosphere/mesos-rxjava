@@ -38,7 +38,7 @@ More details once artifacts are published.
 
 ## Build
 
-Mesos RxJava is defined by a Maven project.
+Mesos RxJava is defined by a Maven project and targeted at Java 1.8.
 
 ### Install Maven
 
