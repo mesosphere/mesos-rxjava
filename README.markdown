@@ -1,4 +1,4 @@
-Mesos RxJava
+Mesos RxJava [![Build Status](https://teamcity.mesosphere.io/guestAuth/app/rest/builds/buildType:(id:Oss_Mesos_MesosRxJava_Ci)/statusIcon)](https://teamcity.mesosphere.io/viewType.html?buildTypeId=Oss_Mesos_MesosRxJava_Ci&guest=1)
 ============
 
 Mesos RxJava is a library that provides a Reactive Client (via [RxJava](https://github.com/ReactiveX/RxJava)) atop
