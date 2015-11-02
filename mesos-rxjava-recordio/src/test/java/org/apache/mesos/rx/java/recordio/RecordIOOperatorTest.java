@@ -74,7 +74,7 @@ public class RecordIOOperatorTest {
         final List<ByteBuf> chunks = new ArrayList<>();
         int len = 100;
         byte[] bytes = new byte[len];
-        int read = 0;
+        int read;
         while ((read = inputStream.read(bytes)) != -1) {
             if (read != len) {
                 final byte[] readBytes = new byte[read];
