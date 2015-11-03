@@ -36,7 +36,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 public class RecordIOOperatorTest {
 
-    private static final List<byte[]> EVENT_CHUNKS = newArrayList(
+    private static final List<Event> EVENT_PROTOS = newArrayList(
         TestingProtos.SUBSCRIBED,
         TestingProtos.HEARTBEAT,
         TestingProtos.HEARTBEAT,
@@ -48,23 +48,9 @@ public class RecordIOOperatorTest {
         TestingProtos.HEARTBEAT,
         TestingProtos.HEARTBEAT,
         TestingProtos.HEARTBEAT
-    ).stream()
-        .map(RecordIOUtils::eventToChunk)
-        .collect(Collectors.toList());
+    );
 
-
-    private static final List<ByteBuf> SUBSCRIBE_AND_TEN_HEARTBEATS = EVENT_CHUNKS
-        .stream()
-        .map(Unpooled::copiedBuffer)
-        .collect(Collectors.toList());
-
-    private static final List<byte[]> SUB_HB_OFFER = newArrayList(
-        TestingProtos.SUBSCRIBED,
-        TestingProtos.HEARTBEAT,
-        TestingProtos.OFFER
-    ).stream()
-        .map(RecordIOUtils::eventToChunk)
-        .collect(Collectors.toList());
+    private static final List<byte[]> EVENT_CHUNKS = RecordIOUtils.listMap(EVENT_PROTOS, RecordIOUtils::eventToChunk);
 
 
     @Test
@@ -80,9 +66,7 @@ public class RecordIOOperatorTest {
         }
 
         runTestOnChunks(chunks, (subscriber, recordIOSubscriber, events) -> {
-            final List<Event.Type> eventTypes = events.stream()
-                .map(Event::getType)
-                .collect(Collectors.toList());
+            final List<Event.Type> eventTypes = RecordIOUtils.listMap(events, Event::getType);
 
             assertThat(eventTypes).isEqualTo(newArrayList(
                 Event.Type.SUBSCRIBED,
@@ -133,40 +117,37 @@ public class RecordIOOperatorTest {
 
     @Test
     public void readEvents_eventsNotSpanningMultipleChunks() throws Exception {
-        runTestOnChunks(SUBSCRIBE_AND_TEN_HEARTBEATS, (subscriber, recordIOSubscriber, events) -> {
-            assertThat(events).hasSize(11);
-            assertThat(events.get(0).getType()).isEqualTo(Event.Type.SUBSCRIBED);
-            assertThat(events.stream().filter(e -> e.getType() == Event.Type.HEARTBEAT).count()).isEqualTo(10);
-        });
+        final List<ByteBuf> eventBufs = RecordIOUtils.listMap(EVENT_CHUNKS, Unpooled::copiedBuffer);
+
+        runTestOnChunks(eventBufs, (subscriber, recordIOSubscriber, events) ->
+            assertThat(events).isEqualTo(EVENT_PROTOS)
+        );
     }
 
     @Test
     public void readEvents_eventsSpanningMultipleChunks() throws Exception {
         final byte[] allBytes = ByteArrays.concatAllChunks(EVENT_CHUNKS);
+        final List<byte[]> arrayChunks = ByteArrays.partitionIntoArraysOfSize(allBytes, 10);
+        final List<ByteBuf> bufChunks = RecordIOUtils.listMap(arrayChunks, Unpooled::copiedBuffer);
 
-        final List<byte[]> newChunks = ByteArrays.partitionIntoArraysOfSize(allBytes, 10);
-
-        final List<ByteBuf> chunks = newChunks.stream()
-            .map(Unpooled::copiedBuffer)
-            .collect(Collectors.toList());
-
-        runTestOnChunks(chunks, (subscriber, recordIOSubscriber, events) -> {
-            assertThat(events).hasSize(11);
-            assertThat(events.get(0).getType()).isEqualTo(Event.Type.SUBSCRIBED);
-            assertThat(events.stream().filter(e -> e.getType() == Event.Type.HEARTBEAT).count()).isEqualTo(10);
-        });
+        runTestOnChunks(bufChunks, (subscriber, recordIOSubscriber, events) ->
+            assertThat(events).isEqualTo(EVENT_PROTOS)
+        );
     }
 
     @Test
     public void readEvents_multipleEventsInOneChunk() throws Exception {
-        runTestOnChunks(newArrayList(
-            Unpooled.copiedBuffer(ByteArrays.concatAllChunks(SUB_HB_OFFER))
-        ), (subscriber, recordIOSubscriber, events) -> {
-            assertThat(events).hasSize(3);
-            assertThat(events.get(0).getType()).isEqualTo(Event.Type.SUBSCRIBED);
-            assertThat(events.get(1).getType()).isEqualTo(Event.Type.HEARTBEAT);
-            assertThat(events.get(2).getType()).isEqualTo(Event.Type.OFFERS);
-        });
+        final List<Event> subHbOffer = newArrayList(
+            TestingProtos.SUBSCRIBED,
+            TestingProtos.HEARTBEAT,
+            TestingProtos.OFFER
+        );
+        final List<byte[]> eventChunks = RecordIOUtils.listMap(subHbOffer, RecordIOUtils::eventToChunk);
+        final List<ByteBuf> singleChunk = newArrayList(Unpooled.copiedBuffer(ByteArrays.concatAllChunks(eventChunks)));
+
+        runTestOnChunks(singleChunk, (subscriber, recordIOSubscriber, events) ->
+            assertThat(events).isEqualTo(subHbOffer)
+        );
     }
 
     @Test
