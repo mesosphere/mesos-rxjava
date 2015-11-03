@@ -145,62 +145,18 @@ public class RecordIOOperatorTest {
     }
 
     @Test
-    public void readEvents_singleEvent_chunkSize_60() throws Exception {
-        final int numPartitions = 1;
+    public void readEvents_singleEvent_variousChunkSizes() throws Exception {
+        final List<Integer> partitionCounts = newArrayList(1, 2, 3, 5, 10, 15, 30, 60);
         final byte[] chunk = RecordIOUtils.eventToChunk(TestingProtos.SUBSCRIBED);
-        runTestOnPartitionedChunk(chunk, numPartitions);
+        final List<List<Event.Type>> results = RecordIOUtils.listMap(partitionCounts, (numPartitions) ->
+            runTestOnPartitionedChunk(chunk, numPartitions)
+        );
+
+        //noinspection unchecked
+        assertThat(results).containsOnly(newArrayList(Event.Type.SUBSCRIBED));
     }
 
-    @Test
-    public void readEvents_singleEvent_chunkSize_30() throws Exception {
-        final int numPartitions = 2;
-        final byte[] chunk = RecordIOUtils.eventToChunk(TestingProtos.SUBSCRIBED);
-        runTestOnPartitionedChunk(chunk, numPartitions);
-    }
-
-    @Test
-    public void readEvents_singleEvent_chunkSize_20() throws Exception {
-        final int numPartitions = 3;
-        final byte[] chunk = RecordIOUtils.eventToChunk(TestingProtos.SUBSCRIBED);
-        runTestOnPartitionedChunk(chunk, numPartitions);
-    }
-
-    @Test
-    public void readEvents_singleEvent_chunkSize_12() throws Exception {
-        final int numPartitions = 5;
-        final byte[] chunk = RecordIOUtils.eventToChunk(TestingProtos.SUBSCRIBED);
-        runTestOnPartitionedChunk(chunk, numPartitions);
-    }
-
-    @Test
-    public void readEvents_singleEvent_chunkSize_06() throws Exception {
-        final int numPartitions = 10;
-        final byte[] chunk = RecordIOUtils.eventToChunk(TestingProtos.SUBSCRIBED);
-        runTestOnPartitionedChunk(chunk, numPartitions);
-    }
-
-    @Test
-    public void readEvents_singleEvent_chunkSize_03() throws Exception {
-        final int numPartitions = 15;
-        final byte[] chunk = RecordIOUtils.eventToChunk(TestingProtos.SUBSCRIBED);
-        runTestOnPartitionedChunk(chunk, numPartitions);
-    }
-
-    @Test
-    public void readEvents_singleEvent_chunkSize_02() throws Exception {
-        final int numPartitions = 30;
-        final byte[] chunk = RecordIOUtils.eventToChunk(TestingProtos.SUBSCRIBED);
-        runTestOnPartitionedChunk(chunk, numPartitions);
-    }
-
-    @Test
-    public void readEvents_singleEvent_chunkSize_01() throws Exception {
-        final int numPartitions = 60;
-        final byte[] chunk = RecordIOUtils.eventToChunk(TestingProtos.SUBSCRIBED);
-        runTestOnPartitionedChunk(chunk, numPartitions);
-    }
-
-    private static void runTestOnPartitionedChunk(@NotNull final byte[] chunk, final int numPartitions) {
+    private static List<Event.Type> runTestOnPartitionedChunk(@NotNull final byte[] chunk, final int numPartitions) {
         // This test is stable because the message we're testing is 57 bytes in length
         // When it's length and '\n' are added is 60 bytes which is easily divisible
         // by [60, 30, 15, 10, 5, 3, 2, 1] (which there are test cases for above)
@@ -210,8 +166,7 @@ public class RecordIOOperatorTest {
         final List<ByteBuf> chunks = RecordIOUtils.listMap(bytes, Unpooled::copiedBuffer);
 
         List<Event> events = runTestOnChunks(chunks);
-        List<Event.Type> eventTypes = RecordIOUtils.listMap(events, Event::getType);
-        assertThat(eventTypes).isEqualTo(newArrayList(Event.Type.SUBSCRIBED));
+        return RecordIOUtils.listMap(events, Event::getType);
     }
 
     private static List<Event> runTestOnChunks(@NotNull final List<ByteBuf> chunks) {
