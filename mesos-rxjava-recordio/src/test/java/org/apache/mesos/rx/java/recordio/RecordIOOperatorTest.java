@@ -72,25 +72,20 @@ public class RecordIOOperatorTest {
         final InputStream inputStream = this.getClass().getResourceAsStream("/events.bin");
 
         final List<ByteBuf> chunks = new ArrayList<>();
-        int len = 100;
-        byte[] bytes = new byte[len];
+        final byte[] bytes = new byte[100];
+
         int read;
         while ((read = inputStream.read(bytes)) != -1) {
-            if (read != len) {
-                final byte[] readBytes = new byte[read];
-                System.arraycopy(bytes, 0, readBytes, 0, read);
-                chunks.add(Unpooled.copiedBuffer(readBytes));
-            } else {
-                chunks.add(Unpooled.copiedBuffer(bytes));
-                bytes = new byte[len];
-            }
+            chunks.add(Unpooled.copiedBuffer(bytes, 0, read));
         }
 
         runTestOnChunks(chunks, (subscriber, recordIOSubscriber, events) -> {
             final List<Event.Type> eventTypes = events.stream()
                 .map(Event::getType)
                 .collect(Collectors.toList());
-            assertThat(eventTypes).isEqualTo(newArrayList(Event.Type.SUBSCRIBED,
+
+            assertThat(eventTypes).isEqualTo(newArrayList(
+                Event.Type.SUBSCRIBED,
                 Event.Type.HEARTBEAT,
                 Event.Type.OFFERS,
                 Event.Type.OFFERS,
