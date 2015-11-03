@@ -23,13 +23,11 @@ import org.apache.mesos.v1.scheduler.Protos.Event;
 import org.jetbrains.annotations.NotNull;
 import org.junit.Test;
 import rx.Subscriber;
-import rx.functions.Action3;
 import rx.observers.TestSubscriber;
 
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 
 import static com.google.common.collect.Lists.newArrayList;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -65,63 +63,61 @@ public class RecordIOOperatorTest {
             chunks.add(Unpooled.copiedBuffer(bytes, 0, read));
         }
 
-        runTestOnChunks(chunks, (subscriber, recordIOSubscriber, events) -> {
-            final List<Event.Type> eventTypes = RecordIOUtils.listMap(events, Event::getType);
+        final List<Event> events = runTestOnChunks(chunks);
+        final List<Event.Type> eventTypes = RecordIOUtils.listMap(events, Event::getType);
 
-            assertThat(eventTypes).isEqualTo(newArrayList(
-                Event.Type.SUBSCRIBED,
-                Event.Type.HEARTBEAT,
-                Event.Type.OFFERS,
-                Event.Type.OFFERS,
-                Event.Type.OFFERS,
-                Event.Type.HEARTBEAT,
-                Event.Type.OFFERS,
-                Event.Type.OFFERS,
-                Event.Type.OFFERS,
-                Event.Type.HEARTBEAT,
-                Event.Type.OFFERS,
-                Event.Type.OFFERS,
-                Event.Type.HEARTBEAT,
-                Event.Type.OFFERS,
-                Event.Type.OFFERS,
-                Event.Type.HEARTBEAT,
-                Event.Type.OFFERS,
-                Event.Type.OFFERS,
-                Event.Type.OFFERS,
-                Event.Type.HEARTBEAT,
-                Event.Type.OFFERS,
-                Event.Type.OFFERS,
-                Event.Type.HEARTBEAT,
-                Event.Type.OFFERS,
-                Event.Type.OFFERS,
-                Event.Type.OFFERS,
-                Event.Type.HEARTBEAT,
-                Event.Type.OFFERS,
-                Event.Type.OFFERS,
-                Event.Type.OFFERS,
-                Event.Type.HEARTBEAT,
-                Event.Type.OFFERS,
-                Event.Type.OFFERS,
-                Event.Type.HEARTBEAT,
-                Event.Type.OFFERS,
-                Event.Type.OFFERS,
-                Event.Type.OFFERS,
-                Event.Type.HEARTBEAT,
-                Event.Type.OFFERS,
-                Event.Type.HEARTBEAT,
-                Event.Type.HEARTBEAT,
-                Event.Type.HEARTBEAT
-            ));
-        });
+        assertThat(eventTypes).isEqualTo(newArrayList(
+            Event.Type.SUBSCRIBED,
+            Event.Type.HEARTBEAT,
+            Event.Type.OFFERS,
+            Event.Type.OFFERS,
+            Event.Type.OFFERS,
+            Event.Type.HEARTBEAT,
+            Event.Type.OFFERS,
+            Event.Type.OFFERS,
+            Event.Type.OFFERS,
+            Event.Type.HEARTBEAT,
+            Event.Type.OFFERS,
+            Event.Type.OFFERS,
+            Event.Type.HEARTBEAT,
+            Event.Type.OFFERS,
+            Event.Type.OFFERS,
+            Event.Type.HEARTBEAT,
+            Event.Type.OFFERS,
+            Event.Type.OFFERS,
+            Event.Type.OFFERS,
+            Event.Type.HEARTBEAT,
+            Event.Type.OFFERS,
+            Event.Type.OFFERS,
+            Event.Type.HEARTBEAT,
+            Event.Type.OFFERS,
+            Event.Type.OFFERS,
+            Event.Type.OFFERS,
+            Event.Type.HEARTBEAT,
+            Event.Type.OFFERS,
+            Event.Type.OFFERS,
+            Event.Type.OFFERS,
+            Event.Type.HEARTBEAT,
+            Event.Type.OFFERS,
+            Event.Type.OFFERS,
+            Event.Type.HEARTBEAT,
+            Event.Type.OFFERS,
+            Event.Type.OFFERS,
+            Event.Type.OFFERS,
+            Event.Type.HEARTBEAT,
+            Event.Type.OFFERS,
+            Event.Type.HEARTBEAT,
+            Event.Type.HEARTBEAT,
+            Event.Type.HEARTBEAT
+        ));
     }
 
     @Test
     public void readEvents_eventsNotSpanningMultipleChunks() throws Exception {
         final List<ByteBuf> eventBufs = RecordIOUtils.listMap(EVENT_CHUNKS, Unpooled::copiedBuffer);
 
-        runTestOnChunks(eventBufs, (subscriber, recordIOSubscriber, events) ->
-            assertThat(events).isEqualTo(EVENT_PROTOS)
-        );
+        final List<Event> events = runTestOnChunks(eventBufs);
+        assertThat(events).isEqualTo(EVENT_PROTOS);
     }
 
     @Test
@@ -130,9 +126,8 @@ public class RecordIOOperatorTest {
         final List<byte[]> arrayChunks = ByteArrays.partitionIntoArraysOfSize(allBytes, 10);
         final List<ByteBuf> bufChunks = RecordIOUtils.listMap(arrayChunks, Unpooled::copiedBuffer);
 
-        runTestOnChunks(bufChunks, (subscriber, recordIOSubscriber, events) ->
-            assertThat(events).isEqualTo(EVENT_PROTOS)
-        );
+        final List<Event> events = runTestOnChunks(bufChunks);
+        assertThat(events).isEqualTo(EVENT_PROTOS);
     }
 
     @Test
@@ -145,9 +140,8 @@ public class RecordIOOperatorTest {
         final List<byte[]> eventChunks = RecordIOUtils.listMap(subHbOffer, RecordIOUtils::eventToChunk);
         final List<ByteBuf> singleChunk = newArrayList(Unpooled.copiedBuffer(ByteArrays.concatAllChunks(eventChunks)));
 
-        runTestOnChunks(singleChunk, (subscriber, recordIOSubscriber, events) ->
-            assertThat(events).isEqualTo(subHbOffer)
-        );
+        final List<Event> events = runTestOnChunks(singleChunk);
+        assertThat(events).isEqualTo(subHbOffer);
     }
 
     @Test
@@ -213,21 +207,14 @@ public class RecordIOOperatorTest {
         assertThat(chunk.length % numPartitions).isEqualTo(0);
         final int partSize = chunk.length / numPartitions;
         final List<byte[]> bytes = ByteArrays.partitionIntoArraysOfSize(chunk, partSize);
-        final List<ByteBuf> chunks = bytes.stream()
-            .map(Unpooled::copiedBuffer)
-            .collect(Collectors.toList());
-        runTestOnChunks(
-            chunks,
-            (subscriber, recordIOSubscriber, events) -> {
-                assertThat(events).hasSize(1);
-                assertThat(events.get(0).getType()).isEqualTo(Event.Type.SUBSCRIBED);
-            });
+        final List<ByteBuf> chunks = RecordIOUtils.listMap(bytes, Unpooled::copiedBuffer);
+
+        List<Event> events = runTestOnChunks(chunks);
+        List<Event.Type> eventTypes = RecordIOUtils.listMap(events, Event::getType);
+        assertThat(eventTypes).isEqualTo(newArrayList(Event.Type.SUBSCRIBED));
     }
 
-    private static void runTestOnChunks(
-        @NotNull final List<ByteBuf> chunks,
-        @NotNull final Action3<Subscriber<byte[]>, RecordIOOperator.RecordIOSubscriber, List<Event>> assertions
-    ) {
+    private static List<Event> runTestOnChunks(@NotNull final List<ByteBuf> chunks) {
         final TestSubscriber<byte[]> child = new TestSubscriber<>();
         final Subscriber<ByteBuf> call = new RecordIOOperator().call(child);
 
@@ -241,17 +228,14 @@ public class RecordIOOperatorTest {
         assertThat(subscriber.messageSizeBytesBuffer).isEmpty();
         assertThat(subscriber.messageBytes).isNull();
         assertThat(subscriber.remainingBytesForMessage).isEqualTo(0);
-        final List<Event> events = child.getOnNextEvents().stream()
-            .map((bs) -> {
-                    try {
-                        return Event.parseFrom(bs);
-                    } catch (InvalidProtocolBufferException e) {
-                        throw new RuntimeException(e);
-                    }
-                }
-            )
-            .collect(Collectors.toList());
-        assertions.call(child, subscriber, events);
+
+        return RecordIOUtils.listMap(child.getOnNextEvents(), (bs) -> {
+            try {
+                return Event.parseFrom(bs);
+            } catch (InvalidProtocolBufferException e) {
+                throw new RuntimeException(e);
+            }
+        });
     }
 
 }
