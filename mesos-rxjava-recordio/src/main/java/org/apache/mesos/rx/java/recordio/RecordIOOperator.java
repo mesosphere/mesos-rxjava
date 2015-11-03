@@ -72,7 +72,7 @@ public final class RecordIOOperator implements Operator<byte[], ByteBuf> {
          * The message size from the stream is provided as a base-10 String representation of an
          * unsigned 64 bit integer (uint64). Since there is a possibility (since the spec isn't
          * formal on this, and the HTTP chunked Transfer-Encoding applied to the data stream can
-         * all chunks to be any size) this field functions as the bytes that have been read
+         * allow chunks to be any size) this field functions as the bytes that have been read
          * since the end of the last message. When the next '\n' is encountered in the byte
          * stream, these bytes are turned into a {@code byte[]} and converted to a UTF-8 String.
          * This string representation is then read as a {@code long} using

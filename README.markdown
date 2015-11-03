@@ -9,16 +9,16 @@ experimental. _The project reserves the right to change any interface at any tim
 
 Apache Mesos is a Cluster Resource manager providing access to cluster resources such as CPU, RAM, Disk and Ports.
 In order to leverage these computing resources a program called a framework is created and registers with Mesos. Once
-registered a framework can launch tasks using the resources offer by Mesos.
+registered a framework can launch tasks using the resources offered by Mesos.
 
-In an effort to allow Mesos to be more accessible to more languages a HTTP APIs are being developed to allow polyglot
+In an effort to allow Mesos to be more accessible to more languages, HTTP APIs are being developed to allow polyglot
 access to authoring frameworks. Prior to the HTTP APIs, libmesos (C++ library) had to be used.
 
 
 ## Project Goal
 
 This project's primary goal is to provide a Java client for interacting with these new HTTP APIs. Mesos' HTTP APIs
-are modeled as an event stream, as such a scheduler can be modeled as an
+are modeled as an event stream; as such a scheduler can be modeled as an
 [`rx.Observable<Event>`](http://reactivex.io/RxJava/javadoc/index.html?rx/Observable.html). Once created, the scheduler
 is able to use the powerful stream manipulation functions provided by RxJava to react to events.
 

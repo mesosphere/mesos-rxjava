@@ -125,7 +125,7 @@
                 <version>${version.rxNetty}</version>
             </dependency>
             <!--
-              Grr, rx sets it's transitive dependencies to 'runtime' scope, so maven doesn't add
+              Grr, rx sets its transitive dependencies to 'runtime' scope, so maven doesn't add
               them to the compile classpath. Manually including them here.  It also appears that
               gradle and sbt don't respect the scope constraint and so the dependencies end up
               on the classpath despite the specified scope.
