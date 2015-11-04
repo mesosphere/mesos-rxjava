@@ -120,13 +120,13 @@ public final class RecordIOOperator implements Operator<byte[], ByteBuf> {
          * will be called and the method will terminate without attempting to do any
          * sort of recovery.
          *
-         * @param t    The {@link ByteBuf} to process
+         * @param buf    The {@link ByteBuf} to process
          */
         @Override
-        public void onNext(final ByteBuf t) {
+        public void onNext(final ByteBuf buf) {
             try {
-                final ByteBufInputStream in = new ByteBufInputStream(t);
-                while (t.readableBytes() > 0) {
+                final ByteBufInputStream in = new ByteBufInputStream(buf);
+                while (buf.readableBytes() > 0) {
                     // New message
                     if (remainingBytesForMessage == 0) {
 
@@ -161,7 +161,7 @@ public final class RecordIOOperator implements Operator<byte[], ByteBuf> {
                     }
 
                     // read bytes until we either reach the end of the ByteBuf or the message is fully read.
-                    final int readableBytes = t.readableBytes();
+                    final int readableBytes = buf.readableBytes();
                     if (readableBytes > 0) {
                         final int writeStart = messageBytes.length - remainingBytesForMessage;
                         final int numBytesToCopy = Math.min(readableBytes, remainingBytesForMessage);
