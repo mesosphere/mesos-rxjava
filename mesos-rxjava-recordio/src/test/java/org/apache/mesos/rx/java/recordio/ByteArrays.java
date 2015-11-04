@@ -25,8 +25,6 @@ import java.util.List;
 
 public final class ByteArrays {
 
-    private static final byte[] ZERO_BYTES = new byte[0];
-
     private ByteArrays() {}
 
     @NotNull
@@ -52,9 +50,7 @@ public final class ByteArrays {
 
     @NotNull
     static byte[] concatAllChunks(@NotNull final List<byte[]> chunks) {
-        return chunks
-            .stream()
-            .reduce(ZERO_BYTES, Bytes::concat);
+        return Bytes.concat(chunks.toArray(new byte[chunks.size()][]));
     }
 
 }

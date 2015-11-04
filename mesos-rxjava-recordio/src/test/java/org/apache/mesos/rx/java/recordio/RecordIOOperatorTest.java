@@ -144,27 +144,7 @@ public class RecordIOOperatorTest {
         assertThat(events).isEqualTo(subHbOffer);
     }
 
-    @Test
-    public void readEvents_singleEvent_variousChunkSizes() throws Exception {
-        final List<Integer> partSizes = newArrayList(1, 2, 3, 4, 5, 10, 20, 30, 40, 50, 60);
-        final byte[] chunk = RecordIOUtils.eventToChunk(TestingProtos.SUBSCRIBED);
-        final List<List<Event.Type>> results = RecordIOUtils.listMap(partSizes, (size) ->
-            runTestOnPartitionedChunk(chunk, size)
-        );
-
-        //noinspection unchecked
-        assertThat(results).containsOnly(newArrayList(Event.Type.SUBSCRIBED));
-    }
-
-    private static List<Event.Type> runTestOnPartitionedChunk(@NotNull final byte[] chunk, final int partSize) {
-        final List<byte[]> bytes = ByteArrays.partitionIntoArraysOfSize(chunk, partSize);
-        final List<ByteBuf> chunks = RecordIOUtils.listMap(bytes, Unpooled::copiedBuffer);
-
-        List<Event> events = runTestOnChunks(chunks);
-        return RecordIOUtils.listMap(events, Event::getType);
-    }
-
-    private static List<Event> runTestOnChunks(@NotNull final List<ByteBuf> chunks) {
+    static List<Event> runTestOnChunks(@NotNull final List<ByteBuf> chunks) {
         final TestSubscriber<byte[]> child = new TestSubscriber<>();
         final Subscriber<ByteBuf> call = new RecordIOOperator().call(child);
 
