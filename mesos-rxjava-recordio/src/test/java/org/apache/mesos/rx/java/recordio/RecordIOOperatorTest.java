@@ -155,9 +155,6 @@ public class RecordIOOperatorTest {
         child.assertNoErrors();
         child.assertNotCompleted();
         child.assertNoTerminalEvent();
-        assertThat(subscriber.messageSizeBytesBuffer).isEmpty();
-        assertThat(subscriber.messageBytes).isNull();
-        assertThat(subscriber.remainingBytesForMessage).isEqualTo(0);
 
         return RecordIOUtils.listMap(child.getOnNextEvents(), (bs) -> {
             try {
