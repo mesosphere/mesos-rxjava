@@ -20,6 +20,10 @@ import com.google.common.base.Charsets;
 import org.apache.mesos.v1.scheduler.Protos;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.List;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+
 public final class RecordIOUtils {
     private static final byte NEW_LINE_BYTE = Charsets.UTF_8.encode("\n").array()[0];
     private static final int NEW_LINE_BYTE_SIZE = 1;
@@ -39,4 +43,13 @@ public final class RecordIOUtils {
         System.arraycopy(bytes, 0, chunk, messageSizeLength + 1, bytes.length);
         return chunk;
     }
+
+    @NotNull
+    static <T, R> List<R> listMap(@NotNull final List<T> input, @NotNull final Function<T, R> mapper) {
+        return input
+            .stream()
+            .map(mapper)
+            .collect(Collectors.toList());
+    }
+
 }

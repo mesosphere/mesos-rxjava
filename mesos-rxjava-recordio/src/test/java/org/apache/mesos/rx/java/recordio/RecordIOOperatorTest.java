@@ -23,20 +23,18 @@ import org.apache.mesos.v1.scheduler.Protos.Event;
 import org.jetbrains.annotations.NotNull;
 import org.junit.Test;
 import rx.Subscriber;
-import rx.functions.Action3;
 import rx.observers.TestSubscriber;
 
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 
 import static com.google.common.collect.Lists.newArrayList;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class RecordIOOperatorTest {
 
-    private final List<byte[]> eventChunks = newArrayList(
+    private static final List<Event> EVENT_PROTOS = newArrayList(
         TestingProtos.SUBSCRIBED,
         TestingProtos.HEARTBEAT,
         TestingProtos.HEARTBEAT,
@@ -48,23 +46,9 @@ public class RecordIOOperatorTest {
         TestingProtos.HEARTBEAT,
         TestingProtos.HEARTBEAT,
         TestingProtos.HEARTBEAT
-    ).stream()
-        .map(RecordIOUtils::eventToChunk)
-        .collect(Collectors.toList());
+    );
 
-
-    private List<ByteBuf> subscribeAndTenHeartbeats = eventChunks
-        .stream()
-        .map(Unpooled::copiedBuffer)
-        .collect(Collectors.toList());
-
-    private List<byte[]> subHbOffer = newArrayList(
-        TestingProtos.SUBSCRIBED,
-        TestingProtos.HEARTBEAT,
-        TestingProtos.OFFER
-    ).stream()
-        .map(RecordIOUtils::eventToChunk)
-        .collect(Collectors.toList());
+    private static final List<byte[]> EVENT_CHUNKS = RecordIOUtils.listMap(EVENT_PROTOS, RecordIOUtils::eventToChunk);
 
 
     @Test
@@ -72,186 +56,95 @@ public class RecordIOOperatorTest {
         final InputStream inputStream = this.getClass().getResourceAsStream("/events.bin");
 
         final List<ByteBuf> chunks = new ArrayList<>();
-        int len = 100;
-        byte[] bytes = new byte[len];
+        final byte[] bytes = new byte[100];
+
         int read;
         while ((read = inputStream.read(bytes)) != -1) {
-            if (read != len) {
-                final byte[] readBytes = new byte[read];
-                System.arraycopy(bytes, 0, readBytes, 0, read);
-                chunks.add(Unpooled.copiedBuffer(readBytes));
-            } else {
-                chunks.add(Unpooled.copiedBuffer(bytes));
-                bytes = new byte[len];
-            }
+            chunks.add(Unpooled.copiedBuffer(bytes, 0, read));
         }
 
-        runTestOnChunks(chunks, (subscriber, recordIOSubscriber, events) -> {
-            final List<Event.Type> eventTypes = events.stream()
-                .map(Event::getType)
-                .collect(Collectors.toList());
-            assertThat(eventTypes).isEqualTo(newArrayList(Event.Type.SUBSCRIBED,
-                Event.Type.HEARTBEAT,
-                Event.Type.OFFERS,
-                Event.Type.OFFERS,
-                Event.Type.OFFERS,
-                Event.Type.HEARTBEAT,
-                Event.Type.OFFERS,
-                Event.Type.OFFERS,
-                Event.Type.OFFERS,
-                Event.Type.HEARTBEAT,
-                Event.Type.OFFERS,
-                Event.Type.OFFERS,
-                Event.Type.HEARTBEAT,
-                Event.Type.OFFERS,
-                Event.Type.OFFERS,
-                Event.Type.HEARTBEAT,
-                Event.Type.OFFERS,
-                Event.Type.OFFERS,
-                Event.Type.OFFERS,
-                Event.Type.HEARTBEAT,
-                Event.Type.OFFERS,
-                Event.Type.OFFERS,
-                Event.Type.HEARTBEAT,
-                Event.Type.OFFERS,
-                Event.Type.OFFERS,
-                Event.Type.OFFERS,
-                Event.Type.HEARTBEAT,
-                Event.Type.OFFERS,
-                Event.Type.OFFERS,
-                Event.Type.OFFERS,
-                Event.Type.HEARTBEAT,
-                Event.Type.OFFERS,
-                Event.Type.OFFERS,
-                Event.Type.HEARTBEAT,
-                Event.Type.OFFERS,
-                Event.Type.OFFERS,
-                Event.Type.OFFERS,
-                Event.Type.HEARTBEAT,
-                Event.Type.OFFERS,
-                Event.Type.HEARTBEAT,
-                Event.Type.HEARTBEAT,
-                Event.Type.HEARTBEAT
-            ));
-        });
+        final List<Event> events = runTestOnChunks(chunks);
+        final List<Event.Type> eventTypes = RecordIOUtils.listMap(events, Event::getType);
+
+        assertThat(eventTypes).isEqualTo(newArrayList(
+            Event.Type.SUBSCRIBED,
+            Event.Type.HEARTBEAT,
+            Event.Type.OFFERS,
+            Event.Type.OFFERS,
+            Event.Type.OFFERS,
+            Event.Type.HEARTBEAT,
+            Event.Type.OFFERS,
+            Event.Type.OFFERS,
+            Event.Type.OFFERS,
+            Event.Type.HEARTBEAT,
+            Event.Type.OFFERS,
+            Event.Type.OFFERS,
+            Event.Type.HEARTBEAT,
+            Event.Type.OFFERS,
+            Event.Type.OFFERS,
+            Event.Type.HEARTBEAT,
+            Event.Type.OFFERS,
+            Event.Type.OFFERS,
+            Event.Type.OFFERS,
+            Event.Type.HEARTBEAT,
+            Event.Type.OFFERS,
+            Event.Type.OFFERS,
+            Event.Type.HEARTBEAT,
+            Event.Type.OFFERS,
+            Event.Type.OFFERS,
+            Event.Type.OFFERS,
+            Event.Type.HEARTBEAT,
+            Event.Type.OFFERS,
+            Event.Type.OFFERS,
+            Event.Type.OFFERS,
+            Event.Type.HEARTBEAT,
+            Event.Type.OFFERS,
+            Event.Type.OFFERS,
+            Event.Type.HEARTBEAT,
+            Event.Type.OFFERS,
+            Event.Type.OFFERS,
+            Event.Type.OFFERS,
+            Event.Type.HEARTBEAT,
+            Event.Type.OFFERS,
+            Event.Type.HEARTBEAT,
+            Event.Type.HEARTBEAT,
+            Event.Type.HEARTBEAT
+        ));
     }
 
     @Test
     public void readEvents_eventsNotSpanningMultipleChunks() throws Exception {
-        runTestOnChunks(subscribeAndTenHeartbeats, (subscriber, recordIOSubscriber, events) -> {
-            assertThat(events).hasSize(11);
-            assertThat(events.get(0).getType()).isEqualTo(Event.Type.SUBSCRIBED);
-            assertThat(events.stream().filter(e -> e.getType() == Event.Type.HEARTBEAT).count()).isEqualTo(10);
-        });
+        final List<ByteBuf> eventBufs = RecordIOUtils.listMap(EVENT_CHUNKS, Unpooled::copiedBuffer);
+
+        final List<Event> events = runTestOnChunks(eventBufs);
+        assertThat(events).isEqualTo(EVENT_PROTOS);
     }
 
     @Test
     public void readEvents_eventsSpanningMultipleChunks() throws Exception {
-        final byte[] allBytes = ByteArrays.concatAllChunks(eventChunks);
+        final byte[] allBytes = ByteArrays.concatAllChunks(EVENT_CHUNKS);
+        final List<byte[]> arrayChunks = ByteArrays.partitionIntoArraysOfSize(allBytes, 10);
+        final List<ByteBuf> bufChunks = RecordIOUtils.listMap(arrayChunks, Unpooled::copiedBuffer);
 
-        final List<byte[]> newChunks = ByteArrays.partitionIntoArraysOfSize(allBytes, 10);
-
-        final List<ByteBuf> chunks = newChunks.stream()
-            .map(Unpooled::copiedBuffer)
-            .collect(Collectors.toList());
-
-        runTestOnChunks(chunks, (subscriber, recordIOSubscriber, events) -> {
-            assertThat(events).hasSize(11);
-            assertThat(events.get(0).getType()).isEqualTo(Event.Type.SUBSCRIBED);
-            assertThat(events.stream().filter(e -> e.getType() == Event.Type.HEARTBEAT).count()).isEqualTo(10);
-        });
+        final List<Event> events = runTestOnChunks(bufChunks);
+        assertThat(events).isEqualTo(EVENT_PROTOS);
     }
 
     @Test
     public void readEvents_multipleEventsInOneChunk() throws Exception {
-        runTestOnChunks(newArrayList(
-            Unpooled.copiedBuffer(ByteArrays.concatAllChunks(subHbOffer))
-        ), (subscriber, recordIOSubscriber, events) -> {
-            assertThat(events).hasSize(3);
-            assertThat(events.get(0).getType()).isEqualTo(Event.Type.SUBSCRIBED);
-            assertThat(events.get(1).getType()).isEqualTo(Event.Type.HEARTBEAT);
-            assertThat(events.get(2).getType()).isEqualTo(Event.Type.OFFERS);
-        });
+        final List<Event> subHbOffer = newArrayList(
+            TestingProtos.SUBSCRIBED,
+            TestingProtos.HEARTBEAT,
+            TestingProtos.OFFER
+        );
+        final List<byte[]> eventChunks = RecordIOUtils.listMap(subHbOffer, RecordIOUtils::eventToChunk);
+        final List<ByteBuf> singleChunk = newArrayList(Unpooled.copiedBuffer(ByteArrays.concatAllChunks(eventChunks)));
+
+        final List<Event> events = runTestOnChunks(singleChunk);
+        assertThat(events).isEqualTo(subHbOffer);
     }
 
-    @Test
-    public void readEvents_singleEvent_chunkSize_60() throws Exception {
-        final int numPartitions = 1;
-        final byte[] chunk = RecordIOUtils.eventToChunk(TestingProtos.SUBSCRIBED);
-        runTestOnPartitionedChunk(chunk, numPartitions);
-    }
-
-    @Test
-    public void readEvents_singleEvent_chunkSize_30() throws Exception {
-        final int numPartitions = 2;
-        final byte[] chunk = RecordIOUtils.eventToChunk(TestingProtos.SUBSCRIBED);
-        runTestOnPartitionedChunk(chunk, numPartitions);
-    }
-
-    @Test
-    public void readEvents_singleEvent_chunkSize_20() throws Exception {
-        final int numPartitions = 3;
-        final byte[] chunk = RecordIOUtils.eventToChunk(TestingProtos.SUBSCRIBED);
-        runTestOnPartitionedChunk(chunk, numPartitions);
-    }
-
-    @Test
-    public void readEvents_singleEvent_chunkSize_12() throws Exception {
-        final int numPartitions = 5;
-        final byte[] chunk = RecordIOUtils.eventToChunk(TestingProtos.SUBSCRIBED);
-        runTestOnPartitionedChunk(chunk, numPartitions);
-    }
-
-    @Test
-    public void readEvents_singleEvent_chunkSize_06() throws Exception {
-        final int numPartitions = 10;
-        final byte[] chunk = RecordIOUtils.eventToChunk(TestingProtos.SUBSCRIBED);
-        runTestOnPartitionedChunk(chunk, numPartitions);
-    }
-
-    @Test
-    public void readEvents_singleEvent_chunkSize_03() throws Exception {
-        final int numPartitions = 15;
-        final byte[] chunk = RecordIOUtils.eventToChunk(TestingProtos.SUBSCRIBED);
-        runTestOnPartitionedChunk(chunk, numPartitions);
-    }
-
-    @Test
-    public void readEvents_singleEvent_chunkSize_02() throws Exception {
-        final int numPartitions = 30;
-        final byte[] chunk = RecordIOUtils.eventToChunk(TestingProtos.SUBSCRIBED);
-        runTestOnPartitionedChunk(chunk, numPartitions);
-    }
-
-    @Test
-    public void readEvents_singleEvent_chunkSize_01() throws Exception {
-        final int numPartitions = 60;
-        final byte[] chunk = RecordIOUtils.eventToChunk(TestingProtos.SUBSCRIBED);
-        runTestOnPartitionedChunk(chunk, numPartitions);
-    }
-
-    private static void runTestOnPartitionedChunk(@NotNull final byte[] chunk, final int numPartitions) {
-        // This test is stable because the message we're testing is 57 bytes in length
-        // When it's length and '\n' are added is 60 bytes which is easily divisible
-        // by [60, 30, 15, 10, 5, 3, 2, 1] (which there are test cases for above)
-        assertThat(chunk.length % numPartitions).isEqualTo(0);
-        final int partSize = chunk.length / numPartitions;
-        final List<byte[]> bytes = ByteArrays.partitionIntoArraysOfSize(chunk, partSize);
-        final List<ByteBuf> chunks = bytes.stream()
-            .map(Unpooled::copiedBuffer)
-            .collect(Collectors.toList());
-        runTestOnChunks(
-            chunks,
-            (subscriber, recordIOSubscriber, events) -> {
-                assertThat(events).hasSize(1);
-                assertThat(events.get(0).getType()).isEqualTo(Event.Type.SUBSCRIBED);
-            });
-    }
-
-    private static void runTestOnChunks(
-        @NotNull final List<ByteBuf> chunks,
-        @NotNull final Action3<Subscriber<byte[]>, RecordIOOperator.RecordIOSubscriber, List<Event>> assertions
-    ) {
+    static List<Event> runTestOnChunks(@NotNull final List<ByteBuf> chunks) {
         final TestSubscriber<byte[]> child = new TestSubscriber<>();
         final Subscriber<ByteBuf> call = new RecordIOOperator().call(child);
 
@@ -265,17 +158,14 @@ public class RecordIOOperatorTest {
         assertThat(subscriber.messageSizeBytesBuffer).isEmpty();
         assertThat(subscriber.messageBytes).isNull();
         assertThat(subscriber.remainingBytesForMessage).isEqualTo(0);
-        final List<Event> events = child.getOnNextEvents().stream()
-            .map((bs) -> {
-                    try {
-                        return Event.parseFrom(bs);
-                    } catch (InvalidProtocolBufferException e) {
-                        throw new RuntimeException(e);
-                    }
-                }
-            )
-            .collect(Collectors.toList());
-        assertions.call(child, subscriber, events);
+
+        return RecordIOUtils.listMap(child.getOnNextEvents(), (bs) -> {
+            try {
+                return Event.parseFrom(bs);
+            } catch (InvalidProtocolBufferException e) {
+                throw new RuntimeException(e);
+            }
+        });
     }
 
 }

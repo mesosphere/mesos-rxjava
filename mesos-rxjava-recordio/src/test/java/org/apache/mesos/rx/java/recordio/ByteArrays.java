@@ -20,42 +20,37 @@ import com.google.common.primitives.Bytes;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 public final class ByteArrays {
 
-    private static final byte[] ZERO_BYTES = new byte[0];
-
     private ByteArrays() {}
 
     @NotNull
-    static List<byte[]> partitionIntoArraysOfSize(@NotNull final byte[] allBytes, final int partSize) {
-        final List<byte[]> newChunks = new ArrayList<>();
-        byte[] newChunk = null;
-        for (int i = 0; i < allBytes.length; i++) {
-            final byte b = allBytes[i];
-            final int partIndex = i % partSize;
-            if (partIndex == 0) {
-                if (newChunk != null) {
-                    newChunks.add(newChunk);
-                }
-                newChunk = new byte[partSize];
-            }
-            //noinspection ConstantConditions
-            newChunk[partIndex] = b;
+    static List<byte[]> partitionIntoArraysOfSize(@NotNull final byte[] allBytes, final int chunkSize) {
+        final List<byte[]> chunks = new ArrayList<>();
+        final int numFullChunks = allBytes.length / chunkSize;
 
-            if (i + 1 == allBytes.length) {
-                newChunks.add(newChunk);
-            }
+        int chunkStart = 0;
+        int chunkEnd = 0;
+
+        for (int i = 0; i < numFullChunks; i++) {
+            chunkEnd += chunkSize;
+            chunks.add(Arrays.copyOfRange(allBytes, chunkStart, chunkEnd));
+            chunkStart = chunkEnd;
         }
-        return newChunks;
+
+        if (chunkStart < allBytes.length) {
+            chunks.add(Arrays.copyOfRange(allBytes, chunkStart, allBytes.length));
+        }
+
+        return chunks;
     }
 
     @NotNull
     static byte[] concatAllChunks(@NotNull final List<byte[]> chunks) {
-        return chunks
-            .stream()
-            .reduce(ZERO_BYTES, Bytes::concat/*acc, val*/);
+        return Bytes.concat(chunks.toArray(new byte[chunks.size()][]));
     }
 
 }
