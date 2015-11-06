@@ -53,7 +53,8 @@ final class MessageStream {
     @Nullable
     private byte[] messageBytes;
 
-    public MessageStream(final @NotNull InputStream source) {
+
+    public MessageStream(@NotNull final InputStream source) {
         this.source = source;
     }
 
@@ -66,54 +67,57 @@ final class MessageStream {
      */
     @Nullable
     public byte[] next() throws IOException {
-        if (remainingBytesForMessage == 0) {
+        if (remainingBytesForMessage == 0 || messageBytes == null) {
+            long messageSize = nextMessageSize();
 
-            while (true) {
-                int i = source.read();
-                if (i == -1) {
-                    return null;
-                }
-
-                byte b = (byte) i;
-                if (b == (byte) '\n') {
-                    break;
-                }
-
-                try {
-                    messageSizeBytes[messageSizeBytesRead++] = b;
-                } catch (ArrayIndexOutOfBoundsException e) {
-                    String error = "Message size field exceeds limit of " + messageSizeBytes.length + " bytes";
-                    throw new IllegalStateException(error, e);
-                }
-            }
-
-            final String messageSizeString = new String(messageSizeBytes, 0, messageSizeBytesRead, Charsets.UTF_8);
-            final long messageSize = Long.valueOf(messageSizeString);
-            messageSizeBytesRead = 0;
-
-            if (messageSize > Integer.MAX_VALUE) {
-                LOGGER.warn("specified message size ({}) is larger than Integer.MAX_VALUE. Value will be truncated to int");
-                remainingBytesForMessage = Integer.MAX_VALUE;
-                // TODO: Possibly make this more robust to account for things larger than 2g
-            } else {
-                remainingBytesForMessage = (int) messageSize;
-            }
-
-            messageBytes = new byte[remainingBytesForMessage];
-        }
-
-        if (messageBytes != null) {
-            final int startIndex = messageBytes.length - remainingBytesForMessage;
-            final int bytesRead = source.read(messageBytes, startIndex, remainingBytesForMessage);
-
-            if (bytesRead == -1) {
+            if (messageSize < 0) {
                 return null;
             }
 
-            remainingBytesForMessage -= bytesRead;
+            if (messageSize > Integer.MAX_VALUE) {
+                // TODO: Possibly make this more robust to account for things larger than 2g
+                String error = "Specified message size " + messageSize + " is larger than Integer.MAX_VALUE";
+                throw new IllegalStateException(error);
+            }
+
+            remainingBytesForMessage = (int) messageSize;
+            messageBytes = new byte[remainingBytesForMessage];
         }
 
+        final int startIndex = messageBytes.length - remainingBytesForMessage;
+        final int bytesRead = source.read(messageBytes, startIndex, remainingBytesForMessage);
+        remainingBytesForMessage -= Math.max(bytesRead, 0);
+
         return (remainingBytesForMessage == 0) ? messageBytes : null;
+    }
+
+
+    private long nextMessageSize() throws IOException {
+        while (true) {
+            int i = source.read();
+            if (i == -1) {
+                return -1L;
+            }
+
+            byte b = (byte) i;
+            if (b == (byte) '\n') {
+                break;
+            }
+
+            try {
+                messageSizeBytes[messageSizeBytesRead] = b;
+            } catch (ArrayIndexOutOfBoundsException e) {
+                String error = "Message size field exceeds limit of " + messageSizeBytes.length + " bytes";
+                throw new IllegalStateException(error, e);
+            }
+
+            messageSizeBytesRead++;
+        }
+
+        final String messageSizeString = new String(messageSizeBytes, 0, messageSizeBytesRead, Charsets.UTF_8);
+        messageSizeBytesRead = 0;
+
+        return Long.valueOf(messageSizeString);
     }
 
 }
