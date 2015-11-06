@@ -17,6 +17,7 @@
 package org.apache.mesos.rx.java;
 
 import com.google.protobuf.ByteString;
+import com.google.protobuf.Message;
 import org.apache.mesos.v1.Protos.AgentID;
 import org.apache.mesos.v1.Protos.FrameworkID;
 import org.apache.mesos.v1.Protos.OfferID;
@@ -53,17 +54,8 @@ public final class ProtoUtils {
     }
 
     @NotNull
-    @Deprecated
-    public static Protos.Event errorMessage(@NotNull final String message) {
-        return Protos.Event.newBuilder()
-            .setType(Protos.Event.Type.ERROR)
-            .setError(Protos.Event.Error.newBuilder().setMessage(message))
-            .build();
-    }
-
-    @NotNull
-    public static String protoToString(@NotNull final Object any) {
-        return PROTO_TO_STRING.matcher(any.toString()).replaceAll(" ").trim();
+    public static String protoToString(@NotNull final Message message) {
+        return PROTO_TO_STRING.matcher(message.toString()).replaceAll(" ").trim();
     }
 
     @NotNull

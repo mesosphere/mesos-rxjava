@@ -23,6 +23,7 @@ import io.reactivex.netty.protocol.http.client.HttpResponseHeaders;
 import org.apache.mesos.rx.java.MesosSchedulerClient;
 import org.apache.mesos.rx.java.ProtoUtils;
 import org.apache.mesos.v1.Protos.*;
+import org.apache.mesos.v1.scheduler.Protos;
 import org.apache.mesos.v1.scheduler.Protos.Call;
 import org.apache.mesos.v1.scheduler.Protos.Event;
 import org.jetbrains.annotations.NotNull;
@@ -61,7 +62,7 @@ public final class Main {
         final int port = Integer.parseInt(args[1]);
         final double cpusPerTask = Double.parseDouble(args[2]);
 
-        final MesosSchedulerClient client = new MesosSchedulerClient(host, port);
+        final MesosSchedulerClient<Protos.Call, Protos.Event> client = MesosSchedulerClient.usingProtos(host, port);
 
         final Call subscribeCall = Call.newBuilder()
             .setType(Call.Type.SUBSCRIBE)
