@@ -9,21 +9,24 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.BufferOverflowException;
+import java.nio.ByteBuffer;
+import java.nio.channels.Channels;
+import java.nio.channels.ReadableByteChannel;
 
 final class MessageStream {
 
     @NotNull
     private static final Logger LOGGER = LoggerFactory.getLogger(MessageStream.class);
 
-    /**
-     * Maximum number of base-10 digits in a uint64
-     */
+    /** Maximum number of base-10 digits in a uint64 */
     private static final int MESSAGE_SIZE_MAX_LENGTH = 20;
 
     @NotNull
     private final InputStream source;
 
-    private int messageSizeBytesRead = 0;
+    @NotNull
+    private final ReadableByteChannel channel;
 
     /**
      * The message size from the stream is provided as a base-10 String representation of an
@@ -35,27 +38,16 @@ final class MessageStream {
      * then read as a {@code long} using {@link Long#valueOf(String, int)}.
      */
     @NotNull
-    private final byte[] messageSizeBytes = new byte[MESSAGE_SIZE_MAX_LENGTH];
+    private final ByteBuffer messageSize = ByteBuffer.allocate(MESSAGE_SIZE_MAX_LENGTH);
 
-    /**
-     * The number of bytes in the encoding is specified as an unsigned (uint64)
-     * However, since arrays in java are addressed and indexed by int we drop the
-     * precision early so that working with the arrays is easier.
-     * Also, a byte[Integer.MAX_VALUE] is 2gb so I seriously doubt we'll be receiving
-     * a message that large.
-     */
-    private int remainingBytesForMessage = 0;
-
-    /**
-     * The allocated {@code byte[]} for the current message being read from the stream.
-     * It is null until the first message is read, and is reassigned for each new message.
-     */
-    @Nullable
-    private byte[] messageBytes;
+    /** The buffer for the current message being read from the stream. */
+    @NotNull
+    private ByteBuffer message = ByteBuffer.allocate(0);
 
 
     public MessageStream(@NotNull final InputStream source) {
         this.source = source;
+        this.channel = Channels.newChannel(source);
     }
 
     /**
@@ -67,7 +59,7 @@ final class MessageStream {
      */
     @Nullable
     public byte[] next() throws IOException {
-        if (remainingBytesForMessage == 0 || messageBytes == null) {
+        if (!message.hasRemaining()) {
             long messageSize = nextMessageSize();
 
             if (messageSize < 0) {
@@ -80,15 +72,11 @@ final class MessageStream {
                 throw new IllegalStateException(error);
             }
 
-            remainingBytesForMessage = (int) messageSize;
-            messageBytes = new byte[remainingBytesForMessage];
+            message = ByteBuffer.allocate((int) messageSize);
         }
 
-        final int startIndex = messageBytes.length - remainingBytesForMessage;
-        final int bytesRead = source.read(messageBytes, startIndex, remainingBytesForMessage);
-        remainingBytesForMessage -= Math.max(bytesRead, 0);
-
-        return (remainingBytesForMessage == 0) ? messageBytes : null;
+        channel.read(message);
+        return message.hasRemaining() ? null : message.array();
     }
 
 
@@ -105,17 +93,16 @@ final class MessageStream {
             }
 
             try {
-                messageSizeBytes[messageSizeBytesRead] = b;
-            } catch (ArrayIndexOutOfBoundsException e) {
-                String error = "Message size field exceeds limit of " + messageSizeBytes.length + " bytes";
+                messageSize.put(b);
+            } catch (BufferOverflowException e) {
+                String error = "Message size field exceeds limit of " + messageSize.limit() + " bytes";
                 throw new IllegalStateException(error, e);
             }
-
-            messageSizeBytesRead++;
         }
 
-        final String messageSizeString = new String(messageSizeBytes, 0, messageSizeBytesRead, Charsets.UTF_8);
-        messageSizeBytesRead = 0;
+        final String messageSizeString =
+            new String(messageSize.array(), messageSize.arrayOffset(), messageSize.position(), Charsets.UTF_8);
+        messageSize.clear();
 
         return Long.valueOf(messageSizeString);
     }
