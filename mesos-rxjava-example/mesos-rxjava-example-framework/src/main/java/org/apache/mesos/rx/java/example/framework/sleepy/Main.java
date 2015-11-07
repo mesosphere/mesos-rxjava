@@ -49,10 +49,20 @@ public final class Main {
     private static final Logger LOGGER = LoggerFactory.getLogger(Main.class);
 
     private static final AtomicInteger counter = new AtomicInteger();
-    public static final double CPUS = 8 / 200.0;
-    public static final int MEM = 32;
+    private static final int MEM = 32;
 
     public static void main(String[] args) throws InterruptedException {
+        if (args.length != 3) {
+            final String className = Main.class.getCanonicalName();
+            System.err.println("Usage: java -cp <application-jar> " + className + " <host> <port> <cpus-per-task>");
+        }
+
+        final String host = args[0];
+        final int port = Integer.parseInt(args[1]);
+        final double cpusPerTask = Double.parseDouble(args[2]);
+
+        final MesosSchedulerClient client = new MesosSchedulerClient(host, port);
+
         final Call subscribeCall = Call.newBuilder()
             .setType(Call.Type.SUBSCRIBE)
             .setSubscribe(
@@ -67,7 +77,6 @@ public final class Main {
             )
             .build();
 
-        final MesosSchedulerClient client = new MesosSchedulerClient();
         final Observable<Event> events = client.openEventStream(subscribeCall)
             .share();
 
@@ -106,10 +115,10 @@ public final class Main {
 
                             double availableCpu = cpus.getScalar().getValue();
                             double availableMem = mem.getScalar().getValue();
-                            while (availableCpu >= CPUS && availableMem >= MEM) {
-                                availableCpu -= CPUS;
+                            while (availableCpu >= cpusPerTask && availableMem >= MEM) {
+                                availableCpu -= cpusPerTask;
                                 availableMem -= MEM;
-                                tasks.add(sleepTask(agentId));
+                                tasks.add(sleepTask(agentId, cpusPerTask, MEM));
                             }
 
 
@@ -197,7 +206,7 @@ public final class Main {
     }
 
     @NotNull
-    private static TaskInfo sleepTask(@NotNull final AgentID agentId) {
+    private static TaskInfo sleepTask(@NotNull final AgentID agentId, final double cpus, final int mem) {
         final String taskId = String.format("task-%d", counter.incrementAndGet());
         return TaskInfo.newBuilder()
             .setName(taskId)
@@ -219,12 +228,12 @@ public final class Main {
                 .setName("cpus")
                 .setRole("*")
                 .setType(Value.Type.SCALAR)
-                .setScalar(Value.Scalar.newBuilder().setValue(CPUS)))
+                .setScalar(Value.Scalar.newBuilder().setValue(cpus)))
             .addResources(Resource.newBuilder()
                 .setName("mem")
                 .setRole("*")
                 .setType(Value.Type.SCALAR)
-                .setScalar(Value.Scalar.newBuilder().setValue(MEM)))
+                .setScalar(Value.Scalar.newBuilder().setValue(mem)))
             .build();
     }
 

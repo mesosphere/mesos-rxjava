@@ -31,13 +31,13 @@ import java.util.concurrent.atomic.AtomicInteger;
 import static com.google.common.collect.Lists.newArrayList;
 import static java.util.stream.Collectors.groupingBy;
 import static org.apache.mesos.Protos.*;
-import static org.apache.mesos.rx.java.example.framework.sleepy.Main.CPUS;
-import static org.apache.mesos.rx.java.example.framework.sleepy.Main.MEM;
 
 public final class LegacyScheduler implements Scheduler {
     private static final Logger LOGGER = LoggerFactory.getLogger(LegacyScheduler.class);
 
     private static final AtomicInteger counter = new AtomicInteger();
+    private static final double CPUS = 8.0 / 200.0;
+    public static final int MEM = 32;
 
     private FrameworkID frameworkId;
 
