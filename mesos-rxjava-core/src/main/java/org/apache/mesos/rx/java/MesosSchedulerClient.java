@@ -16,7 +16,6 @@
 
 package org.apache.mesos.rx.java;
 
-import com.google.protobuf.InvalidProtocolBufferException;
 import io.netty.buffer.ByteBuf;
 import io.reactivex.netty.RxNetty;
 import io.reactivex.netty.protocol.http.AbstractHttpContentHolder;
@@ -26,7 +25,6 @@ import io.reactivex.netty.protocol.http.client.HttpClientRequest;
 import io.reactivex.netty.protocol.http.client.HttpClientResponse;
 import org.apache.mesos.rx.java.recordio.RecordIOOperator;
 import org.apache.mesos.v1.scheduler.Protos;
-import org.apache.mesos.v1.scheduler.Protos.Call;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,34 +33,37 @@ import rx.schedulers.Schedulers;
 
 import java.util.concurrent.TimeUnit;
 
-public final class MesosSchedulerClient {
+public final class MesosSchedulerClient<Send, Receive> {
     private static final Logger LOGGER = LoggerFactory.getLogger(MesosSchedulerClient.class);
 
     @NotNull
-    private final String contentType;
+    public static MesosSchedulerClient<Protos.Call, Protos.Event> usingProtos(
+        @NotNull final String host,
+        final int port
+    ) {
+        return new MesosSchedulerClient<>(host, port, "rx-mesos", MessageCodecs.PROTOS_CALL, MessageCodecs.PROTOS_EVENT);
+    }
+
+
     @NotNull
-    private final String accept;
+    private final MessageCodec<Send> sendCodec;
+
+    @NotNull
+    private final MessageCodec<Receive> receiveCodec;
 
     @NotNull
     private final HttpClient<ByteBuf, ByteBuf> httpClient;
 
-    public MesosSchedulerClient() {
-        this("localhost", 5050);
-    }
-
-    public MesosSchedulerClient(@NotNull final String host, final int port) {
-        this("rx-mesos", "application/x-protobuf", "application/x-protobuf", host, port);
-    }
 
     public MesosSchedulerClient(
-        @NotNull final String name,
-        @NotNull final String contentType,
-        @NotNull final String accept,
         @NotNull final String host,
-        final int port
+        final int port,
+        @NotNull final String name,
+        @NotNull final MessageCodec<Send> sendCodec,
+        @NotNull final MessageCodec<Receive> receiveCodec
     ) {
-        this.contentType = contentType;
-        this.accept = accept;
+        this.sendCodec = sendCodec;
+        this.receiveCodec = receiveCodec;
 
         httpClient = RxNetty.<ByteBuf, ByteBuf>newHttpClientBuilder(host, port)
             .withName(name)
@@ -71,7 +72,7 @@ public final class MesosSchedulerClient {
     }
 
     @NotNull
-    public Observable<Protos.Event> openEventStream(@NotNull final Call subscription) {
+    public Observable<Receive> openEventStream(@NotNull final Send subscription) {
         final HttpClientRequest<ByteBuf> registerRequest = createPost(subscription);
 
         return httpClient.submit(registerRequest)
@@ -83,23 +84,17 @@ public final class MesosSchedulerClient {
             .buffer(250, TimeUnit.MILLISECONDS)
             .flatMap(Observable::from)
             /* end temporary back-pressure */
-            .map((byte[] bs) -> {
-                try {
-                    return Protos.Event.parseFrom(bs);
-                } catch (InvalidProtocolBufferException e) {
-                    return ProtoUtils.errorMessage("Ruh-Ro: " + e.getMessage());
-                }
-            })
-            .doOnNext(event -> LOGGER.trace("Observed Event: {}", ProtoUtils.protoToString(event)))
+            .map(receiveCodec::decode)
+            .doOnNext(event -> LOGGER.trace("Observed Event: {}", receiveCodec.show(event)))
             .doOnError(t -> LOGGER.warn("doOnError", t))
             ;
     }
 
     @NotNull
-    public Observable<HttpClientResponse<ByteBuf>> sink(@NotNull final Observable<Call> spout) {
+    public Observable<HttpClientResponse<ByteBuf>> sink(@NotNull final Observable<Send> spout) {
         return Observable.concat(
             spout
-                .doOnNext(call -> LOGGER.trace("Sending Call: {}", ProtoUtils.protoToString(call)))
+                .doOnNext(call -> LOGGER.trace("Sending Call: {}", sendCodec.show(call)))
                 .map(this::createPost)
                 .subscribeOn(Schedulers.io())
                 .map(httpClient::submit)
@@ -107,11 +102,11 @@ public final class MesosSchedulerClient {
     }
 
     @NotNull
-    private HttpClientRequest<ByteBuf> createPost(final @NotNull Call call) {
-        final byte[] bytes = call.toByteArray();
+    private HttpClientRequest<ByteBuf> createPost(@NotNull final Send call) {
+        final byte[] bytes = sendCodec.encode(call);
         return HttpClientRequest.createPost("/api/v1/scheduler")
-            .withHeader("Content-Type", contentType)
-            .withHeader("Accept", accept)
+            .withHeader("Content-Type", sendCodec.mediaType())
+            .withHeader("Accept", receiveCodec.mediaType())
             .withContent(bytes);
     }
 

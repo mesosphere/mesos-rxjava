@@ -39,6 +39,12 @@
             <artifactId>mesos-rxjava-recordio</artifactId>
         </dependency>
         <dependency>
+            <groupId>org.apache.mesos.rx.java</groupId>
+            <artifactId>mesos-rxjava-recordio</artifactId>
+            <type>test-jar</type>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
             <groupId>org.apache.mesos</groupId>
             <artifactId>mesos</artifactId>
         </dependency>

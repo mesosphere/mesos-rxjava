@@ -23,13 +23,13 @@ import static com.google.common.collect.Lists.newArrayList;
 
 public final class TestingProtos {
     @NotNull
-    static final Protos.Event HEARTBEAT = Protos.Event.newBuilder()
+    public static final Protos.Event HEARTBEAT = Protos.Event.newBuilder()
         .setType(Protos.Event.Type.HEARTBEAT)
         .build();
     @NotNull
-    static final Protos.Event SUBSCRIBED = subscribed("20151008-161417-16777343-5050-20532-0008", 15);
+    public static final Protos.Event SUBSCRIBED = subscribed("20151008-161417-16777343-5050-20532-0008", 15);
     @NotNull
-    static final Protos.Event OFFER = resourceOffer("host1", "offer", "slave", "frw1", 8d, 8192, 8192);
+    public static final Protos.Event OFFER = resourceOffer("host1", "offer", "slave", "frw1", 8d, 8192, 8192);
 
     @NotNull
     public static Protos.Event subscribed(@NotNull final String frameworkId, final int heartbeatIntervalSeconds) {
