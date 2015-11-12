@@ -36,7 +36,7 @@ import static com.google.common.collect.Lists.newArrayList;
  * An {@link Operator} that can be applied to a stream of {@link ByteBuf} and produce
  * a stream of {@code byte[]} messages following the RecordIO format.
  *
- * @see <a href="http://someplace_for_recordio_spec" target="_blank">RecordIO</a>
+ * @see <a href="https://github.com/apache/mesos/blob/master/docs/scheduler-http-api.md#recordio-response-format" target="_blank">RecordIO</a>
  * @see rx.Observable#lift(Operator)
  */
 public final class RecordIOOperator implements Operator<byte[], ByteBuf> {
@@ -52,9 +52,10 @@ public final class RecordIOOperator implements Operator<byte[], ByteBuf> {
     /**
      * A {@link Subscriber} that can process the contents of a {@link ByteBuf} and emit 0-to-many
      * {@code byte[]} messages. The format of the data stream represented by the {@link ByteBuf}
-     * is in RecordIO format <a href="TODO: Find an actual link to the spec for this thing...">RecordIO</a>
-     * If a single {@link ByteBuf} does not represent a full message, the data will be buffered
-     * until a full message can be obtained.
+     * is in
+     * <a href="https://github.com/apache/mesos/blob/master/docs/scheduler-http-api.md#recordio-response-format">
+     * RecordIO format</a>. If a single {@link ByteBuf} does not represent a full message, the data will be
+     * buffered until a full message can be obtained.
      *
      * <i>
      *     Due to the way arrays in Java work, there is an effective limitation to message size of
