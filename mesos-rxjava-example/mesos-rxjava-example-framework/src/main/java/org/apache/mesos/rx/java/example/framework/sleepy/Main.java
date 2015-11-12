@@ -16,12 +16,7 @@
 
 package org.apache.mesos.rx.java.example.framework.sleepy;
 
-import com.google.common.base.Joiner;
-import io.netty.handler.codec.http.HttpResponseStatus;
-import io.netty.util.CharsetUtil;
-import io.reactivex.netty.protocol.http.client.HttpResponseHeaders;
-import org.apache.mesos.rx.java.MesosSchedulerClient;
-import org.apache.mesos.rx.java.ProtoUtils;
+import org.apache.mesos.rx.java.*;
 import org.apache.mesos.v1.Protos.*;
 import org.apache.mesos.v1.scheduler.Protos;
 import org.apache.mesos.v1.scheduler.Protos.Call;
@@ -31,28 +26,36 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import rx.Observable;
 import rx.Subscription;
-import rx.schedulers.Schedulers;
 
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicReference;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import static com.google.common.collect.Lists.newArrayList;
 import static java.util.stream.Collectors.groupingBy;
+import static org.apache.mesos.rx.java.ProtoUtils.decline;
+import static org.apache.mesos.rx.java.SinkOperations.sink;
 import static rx.Observable.from;
 import static rx.Observable.just;
 
 public final class Main {
     private static final Logger LOGGER = LoggerFactory.getLogger(Main.class);
 
-    private static final AtomicInteger counter = new AtomicInteger();
+    private static final AtomicInteger OFFER_COUNTER = new AtomicInteger();
+    private static final AtomicInteger TOTAL_TASK_COUNTER = new AtomicInteger();
     private static final int MEM = 32;
 
-    public static void main(String[] args) throws InterruptedException {
+    public static void main(final String[] args) {
+        try {
+            _main(args);
+        } catch (Exception e) {
+            LOGGER.error("Unhandled exception caught at main", e);
+            System.exit(1);
+        }
+    }
+
+    private static void _main(final String[] args) throws InterruptedException {
         if (args.length != 3) {
             final String className = Main.class.getCanonicalName();
             System.err.println("Usage: java -cp <application-jar> " + className + " <host> <port> <cpus-per-task>");
@@ -79,109 +82,94 @@ public final class Main {
             .build();
 
         final Observable<Event> events = client.openEventStream(subscribeCall)
-            .share();
+            .share()
+            .observeOn(Rx.compute());
 
-        final AtomicReference<FrameworkID> reference = new AtomicReference<>(null);
-        final Observable<AtomicReference<FrameworkID>> frameworkIDObservable = just(reference).repeat();
+        final Observable<State> stateObservable = just(new State()).repeat();
 
         final Subscription setFrameworkIdSubscription = events
             .filter(event -> event.getType() == Event.Type.SUBSCRIBED)
-            .zipWith(frameworkIDObservable, (Event e, AtomicReference<FrameworkID> fwIdRef) -> {
+            .zipWith(stateObservable, (Event e, State state) -> {
                 final FrameworkID frameworkId = e.getSubscribed().getFrameworkId();
                 LOGGER.info("Setting frameworkId to {}", ProtoUtils.protoToString(frameworkId));
-                fwIdRef.set(frameworkId);
+                state.setFwId(frameworkId);
                 return e;
             })
             .subscribe();
 
-        final Observable<Call> declines = events
-            .zipWith(frameworkIDObservable, Tuple2::create)
-            .filter((Tuple2<Event, AtomicReference<FrameworkID>> t) -> t._1.getType() == Event.Type.OFFERS && t._2.get() != null)
-            .flatMap((Tuple2<Event, AtomicReference<FrameworkID>> t) -> {
-                final FrameworkID frameworkId = t._2.get();
-                final Event event = t._1;
-                final List<Call> calls = event.getOffers().getOffersList()
+        final Observable<SinkOperation<Call>> offerEvaluations = events
+            .filter(event -> event.getType() == Event.Type.OFFERS)
+            .flatMap(event -> from(event.getOffers().getOffersList()))
+            .zipWith(stateObservable, Tuple2::create)
+            .filter((Tuple2<Offer, State> t) -> t._2.getFwId() != null)
+            .map((Tuple2<Offer, State> t) -> {
+                final int offerCount = OFFER_COUNTER.incrementAndGet();
+                final Offer offer = t._1;
+                final State state = t._2;
+
+                final FrameworkID frameworkId = state.getFwId();
+                final AgentID agentId = offer.getAgentId();
+                final List<OfferID> ids = newArrayList(offer.getId());
+
+                final Map<String, List<Resource>> resources = offer.getResourcesList()
                     .stream()
-                    .flatMap((Offer offer) -> {
-                        final AgentID agentId = offer.getAgentId();
-                        final Map<String, List<Resource>> resources = offer.getResourcesList()
-                            .stream()
-                            .collect(groupingBy(Resource::getName));
-                        final List<Resource> cpuList = resources.get("cpus");
-                        final List<Resource> memList = resources.get("mem");
-                        if (cpuList != null && !cpuList.isEmpty() && memList != null && !memList.isEmpty()) {
-                            final Resource cpus = cpuList.iterator().next();
-                            final Resource mem = memList.iterator().next();
-                            final List<TaskInfo> tasks = newArrayList();
+                    .collect(groupingBy(Resource::getName));
+                final List<Resource> cpuList = resources.get("cpus");
+                final List<Resource> memList = resources.get("mem");
+                if (cpuList != null && !cpuList.isEmpty() && memList != null && !memList.isEmpty()) {
+                    final Resource cpus = cpuList.iterator().next();
+                    final Resource mem = memList.iterator().next();
+                    final List<TaskInfo> tasks = newArrayList();
 
-                            double availableCpu = cpus.getScalar().getValue();
-                            double availableMem = mem.getScalar().getValue();
-                            while (availableCpu >= cpusPerTask && availableMem >= MEM) {
-                                availableCpu -= cpusPerTask;
-                                availableMem -= MEM;
-                                tasks.add(sleepTask(agentId, cpusPerTask, MEM));
-                            }
+                    double availableCpu = cpus.getScalar().getValue();
+                    double availableMem = mem.getScalar().getValue();
+                    while (availableCpu >= cpusPerTask && availableMem >= MEM) {
+                        availableCpu -= cpusPerTask;
+                        availableMem -= MEM;
+                        final String taskId = String.format("task-%d-%d", offerCount, TOTAL_TASK_COUNTER.incrementAndGet());
+                        tasks.add(sleepTask(agentId, taskId, cpusPerTask, MEM));
+                    }
 
 
-                            final List<OfferID> ids = newArrayList(offer.getId());
-                            if (!tasks.isEmpty()) {
-                                LOGGER.info("Launching {} tasks", tasks.size());
-                                return Stream.of(sleep(
-                                    frameworkId,
-                                    ids,
-                                    tasks
-                                ));
-                            } else {
-                                return Stream.of(ProtoUtils.decline(frameworkId, ids));
-                            }
-                        } else {
-                            return Stream.empty();
-                        }
-                    })
-                    .collect(Collectors.toList());
-                return from(calls);
+                    if (!tasks.isEmpty()) {
+                        LOGGER.info("Launching {} tasks", tasks.size());
+                        return sink(
+                            sleep(frameworkId, ids, tasks),
+                            () -> tasks.forEach(task -> state.put(task.getTaskId(), TaskState.TASK_STAGING))
+                        );
+                    } else {
+                        return sink(decline(frameworkId, ids));
+                    }
+                } else {
+                    return sink(decline(frameworkId, ids));
+                }
             });
 
-        final Observable<Call> updateStatusAck = events
+        final Observable<SinkOperation<Call>> updateStatusAck = events
             .filter(event -> event.getType() == Event.Type.UPDATE && event.getUpdate().getStatus().hasUuid())
-            .zipWith(frameworkIDObservable, Tuple2::create)
-            .map((Tuple2<Event, AtomicReference<FrameworkID>> t) -> {
+            .zipWith(stateObservable, Tuple2::create)
+            .doOnNext((Tuple2<Event, State> t) -> {
+                final Event event = t._1;
+                final State state = t._2;
+                final TaskStatus status = event.getUpdate().getStatus();
+                state.put(status.getTaskId(), status.getState());
+            })
+            .map((Tuple2<Event, State> t) -> {
                 final TaskStatus status = t._1.getUpdate().getStatus();
-                return ProtoUtils.ackUpdate(t._2.get(), status.getUuid(), status.getAgentId(), status.getTaskId());
-            });
+                return ProtoUtils.ackUpdate(t._2.getFwId(), status.getUuid(), status.getAgentId(), status.getTaskId());
+            })
+            .map(SinkOperations::create);
 
-        final Observable<Call> calls = declines.mergeWith(updateStatusAck);
-        final Observable<?> sink = client.sink(calls)
-            .subscribeOn(Schedulers.io())
-            .filter(resp -> resp.getStatus().code() != 202)
-            .flatMap((failedResponse) ->
-                    // TODO: Figure out a better way to communicate this scenario to the application
-                    failedResponse.getContent()
-                        .map(buf -> {
-                            final String message = buf.toString(CharsetUtil.UTF_8);
-                            final HttpResponseHeaders headers = failedResponse.getHeaders();
-                            final List<Map.Entry<String, String>> entries = headers.entries();
-                            final String headersString = Joiner.on(",").skipNulls().join(entries);
-                            return Tuple2.t(failedResponse.getStatus(), Tuple2.t(headersString, message));
-                        })
-            )
-            .doOnNext((Tuple2<HttpResponseStatus, Tuple2<String, String>> t) ->
-                    LOGGER.warn(
-                        "Failed response: Status: {}, Headers: {}, Message: '{}'",
-                        t._1,
-                        t._2._1,
-                        t._2._2
-                    )
-            );
+        final Observable<SinkOperation<Call>> calls = offerEvaluations.mergeWith(updateStatusAck);
 
-        final Subscription errorLoggerSubscription = events.
-            filter(event -> event.getType() == Event.Type.UPDATE && event.getUpdate().getStatus().getState() == TaskState.TASK_ERROR)
+        final Subscription errorLoggerSubscription = events
+            .filter(event -> event.getType() == Event.Type.UPDATE && event.getUpdate().getStatus().getState() == TaskState.TASK_ERROR)
             .doOnNext(e -> LOGGER.warn("Task Error: {}", ProtoUtils.protoToString(e)))
             .subscribe();
 
-        sink
-            .toBlocking()
-            .last();
+        final Subscription sink = client.sink(calls);
+        Thread.sleep(Integer.MAX_VALUE); //TODO: Figure out something better than this
+        sink.unsubscribe();
         setFrameworkIdSubscription.unsubscribe();
         errorLoggerSubscription.unsubscribe();
     }
@@ -207,8 +195,7 @@ public final class Main {
     }
 
     @NotNull
-    private static TaskInfo sleepTask(@NotNull final AgentID agentId, final double cpus, final int mem) {
-        final String taskId = String.format("task-%d", counter.incrementAndGet());
+    private static TaskInfo sleepTask(@NotNull final AgentID agentId, @NotNull final String taskId, final double cpus, final int mem) {
         return TaskInfo.newBuilder()
             .setName(taskId)
             .setTaskId(
@@ -237,5 +224,6 @@ public final class Main {
                 .setScalar(Value.Scalar.newBuilder().setValue(mem)))
             .build();
     }
+
 
 }

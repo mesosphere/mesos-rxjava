@@ -22,22 +22,27 @@ import io.reactivex.netty.protocol.http.AbstractHttpContentHolder;
 import io.reactivex.netty.protocol.http.client.HttpClient;
 import io.reactivex.netty.protocol.http.client.HttpClientPipelineConfigurator;
 import io.reactivex.netty.protocol.http.client.HttpClientRequest;
-import io.reactivex.netty.protocol.http.client.HttpClientResponse;
 import org.apache.mesos.rx.java.recordio.RecordIOOperator;
 import org.apache.mesos.v1.scheduler.Protos;
+import org.apache.mesos.v1.scheduler.Protos.Call;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import rx.Observable;
+import rx.Subscriber;
+import rx.Subscription;
+import rx.functions.Func1;
 import rx.schedulers.Schedulers;
 
 import java.util.concurrent.TimeUnit;
+
+import static rx.Observable.just;
 
 public final class MesosSchedulerClient<Send, Receive> {
     private static final Logger LOGGER = LoggerFactory.getLogger(MesosSchedulerClient.class);
 
     @NotNull
-    public static MesosSchedulerClient<Protos.Call, Protos.Event> usingProtos(
+    public static MesosSchedulerClient<Call, Protos.Event> usingProtos(
         @NotNull final String host,
         final int port
     ) {
@@ -54,6 +59,9 @@ public final class MesosSchedulerClient<Send, Receive> {
     @NotNull
     private final HttpClient<ByteBuf, ByteBuf> httpClient;
 
+    @NotNull
+    private final Func1<Send, Observable<HttpClientRequest<ByteBuf>>> createPost;
+
 
     public MesosSchedulerClient(
         @NotNull final String host,
@@ -69,13 +77,21 @@ public final class MesosSchedulerClient<Send, Receive> {
             .withName(name)
             .pipelineConfigurator(new HttpClientPipelineConfigurator<>())
             .build();
+
+        createPost = (Send s) -> {
+            final byte[] bytes = sendCodec.encode(s);
+            return just(HttpClientRequest.createPost("/api/v1/scheduler")
+                .withHeader("Content-Type", sendCodec.mediaType())
+                .withHeader("Accept", receiveCodec.mediaType())
+                .withContent(bytes)
+            );
+        };
     }
 
     @NotNull
     public Observable<Receive> openEventStream(@NotNull final Send subscription) {
-        final HttpClientRequest<ByteBuf> registerRequest = createPost(subscription);
-
-        return httpClient.submit(registerRequest)
+        return createPost.call(subscription)
+            .flatMap(httpClient::submit)
             .subscribeOn(Schedulers.io())
             .flatMap(AbstractHttpContentHolder::getContent)
             .lift(new RecordIOOperator())
@@ -91,24 +107,11 @@ public final class MesosSchedulerClient<Send, Receive> {
     }
 
     @NotNull
-    public Observable<HttpClientResponse<ByteBuf>> sink(@NotNull final Observable<Send> spout) {
-        return Observable.concat(
-            spout
-                .doOnNext(call -> LOGGER.trace("Sending Call: {}", sendCodec.show(call)))
-                .map(this::createPost)
-                .subscribeOn(Schedulers.io())
-                .map(httpClient::submit)
-        );
+    public Subscription sink(@NotNull final Observable<SinkOperation<Send>> spout) {
+        final Subscriber<SinkOperation<Send>> subscriber = new SinkSubscriber<>(httpClient, createPost);
+        return spout
+            .subscribeOn(Rx.compute())
+            .observeOn(Rx.compute())
+            .subscribe(subscriber);
     }
-
-    @NotNull
-    private HttpClientRequest<ByteBuf> createPost(@NotNull final Send call) {
-        final byte[] bytes = sendCodec.encode(call);
-        return HttpClientRequest.createPost("/api/v1/scheduler")
-            .withHeader("Content-Type", sendCodec.mediaType())
-            .withHeader("Accept", receiveCodec.mediaType())
-            .withContent(bytes);
-    }
-
-
 }

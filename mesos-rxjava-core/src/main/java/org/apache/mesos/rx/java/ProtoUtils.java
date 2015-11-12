@@ -55,7 +55,7 @@ public final class ProtoUtils {
 
     @NotNull
     public static String protoToString(@NotNull final Message message) {
-        return PROTO_TO_STRING.matcher(message.toString()).replaceAll(" ").trim();
+        return "{ " + PROTO_TO_STRING.matcher(message.toString()).replaceAll(" ").trim() + " }";
     }
 
     @NotNull
