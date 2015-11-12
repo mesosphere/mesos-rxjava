@@ -18,7 +18,6 @@ package org.apache.mesos.rx.java.example.framework.sleepy;
 
 import org.apache.mesos.rx.java.*;
 import org.apache.mesos.v1.Protos.*;
-import org.apache.mesos.v1.scheduler.Protos;
 import org.apache.mesos.v1.scheduler.Protos.Call;
 import org.apache.mesos.v1.scheduler.Protos.Event;
 import org.jetbrains.annotations.NotNull;
@@ -30,7 +29,7 @@ import rx.Subscription;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.UUID;
 
 import static com.google.common.collect.Lists.newArrayList;
 import static java.util.stream.Collectors.groupingBy;
@@ -42,37 +41,37 @@ import static rx.Observable.just;
 public final class Main {
     private static final Logger LOGGER = LoggerFactory.getLogger(Main.class);
 
-    private static final AtomicInteger OFFER_COUNTER = new AtomicInteger();
-    private static final AtomicInteger TOTAL_TASK_COUNTER = new AtomicInteger();
-    private static final int MEM = 32;
-
     public static void main(final String[] args) {
         try {
-            _main(args);
+            if (args.length != 3) {
+                final String className = Main.class.getCanonicalName();
+                System.err.println("Usage: java -cp <application-jar> " + className + " <host> <port> <cpus-per-task>");
+            }
+
+            final String host = args[0];
+            final int port = Integer.parseInt(args[1]);
+            final double cpusPerTask = Double.parseDouble(args[2]);
+            final FrameworkID fwId = FrameworkID.newBuilder().setValue("testing-" + UUID.randomUUID()).build();
+            final State state = new State(fwId, cpusPerTask, 32);
+
+            final MesosSchedulerClient<Call, Event> client = MesosSchedulerClient.usingProtos(host, port);
+            _main(state, client);
         } catch (Exception e) {
             LOGGER.error("Unhandled exception caught at main", e);
             System.exit(1);
         }
     }
 
-    private static void _main(final String[] args) throws InterruptedException {
-        if (args.length != 3) {
-            final String className = Main.class.getCanonicalName();
-            System.err.println("Usage: java -cp <application-jar> " + className + " <host> <port> <cpus-per-task>");
-        }
-
-        final String host = args[0];
-        final int port = Integer.parseInt(args[1]);
-        final double cpusPerTask = Double.parseDouble(args[2]);
-
-        final MesosSchedulerClient<Protos.Call, Protos.Event> client = MesosSchedulerClient.usingProtos(host, port);
+    private static void _main(@NotNull final State stateObject, @NotNull final MesosSchedulerClient<Call, Event> client) throws InterruptedException {
 
         final Call subscribeCall = Call.newBuilder()
+            .setFrameworkId(stateObject.getFwId())
             .setType(Call.Type.SUBSCRIBE)
             .setSubscribe(
                 Call.Subscribe.newBuilder()
                     .setFrameworkInfo(
                         FrameworkInfo.newBuilder()
+                            .setId(stateObject.getFwId())
                             .setUser(Optional.ofNullable(System.getenv("user")).orElse("root")) // https://issues.apache.org/jira/browse/MESOS-3747
                             .setName("testing")
                             .setFailoverTimeout(0)
@@ -85,65 +84,13 @@ public final class Main {
             .share()
             .observeOn(Rx.compute());
 
-        final Observable<State> stateObservable = just(new State()).repeat();
-
-        final Subscription setFrameworkIdSubscription = events
-            .filter(event -> event.getType() == Event.Type.SUBSCRIBED)
-            .zipWith(stateObservable, (Event e, State state) -> {
-                final FrameworkID frameworkId = e.getSubscribed().getFrameworkId();
-                LOGGER.info("Setting frameworkId to {}", ProtoUtils.protoToString(frameworkId));
-                state.setFwId(frameworkId);
-                return e;
-            })
-            .subscribe();
+        final Observable<State> stateObservable = just(stateObject).repeat();
 
         final Observable<SinkOperation<Call>> offerEvaluations = events
             .filter(event -> event.getType() == Event.Type.OFFERS)
             .flatMap(event -> from(event.getOffers().getOffersList()))
             .zipWith(stateObservable, Tuple2::create)
-            .filter((Tuple2<Offer, State> t) -> t._2.getFwId() != null)
-            .map((Tuple2<Offer, State> t) -> {
-                final int offerCount = OFFER_COUNTER.incrementAndGet();
-                final Offer offer = t._1;
-                final State state = t._2;
-
-                final FrameworkID frameworkId = state.getFwId();
-                final AgentID agentId = offer.getAgentId();
-                final List<OfferID> ids = newArrayList(offer.getId());
-
-                final Map<String, List<Resource>> resources = offer.getResourcesList()
-                    .stream()
-                    .collect(groupingBy(Resource::getName));
-                final List<Resource> cpuList = resources.get("cpus");
-                final List<Resource> memList = resources.get("mem");
-                if (cpuList != null && !cpuList.isEmpty() && memList != null && !memList.isEmpty()) {
-                    final Resource cpus = cpuList.iterator().next();
-                    final Resource mem = memList.iterator().next();
-                    final List<TaskInfo> tasks = newArrayList();
-
-                    double availableCpu = cpus.getScalar().getValue();
-                    double availableMem = mem.getScalar().getValue();
-                    while (availableCpu >= cpusPerTask && availableMem >= MEM) {
-                        availableCpu -= cpusPerTask;
-                        availableMem -= MEM;
-                        final String taskId = String.format("task-%d-%d", offerCount, TOTAL_TASK_COUNTER.incrementAndGet());
-                        tasks.add(sleepTask(agentId, taskId, cpusPerTask, MEM));
-                    }
-
-
-                    if (!tasks.isEmpty()) {
-                        LOGGER.info("Launching {} tasks", tasks.size());
-                        return sink(
-                            sleep(frameworkId, ids, tasks),
-                            () -> tasks.forEach(task -> state.put(task.getTaskId(), TaskState.TASK_STAGING))
-                        );
-                    } else {
-                        return sink(decline(frameworkId, ids));
-                    }
-                } else {
-                    return sink(decline(frameworkId, ids));
-                }
-            });
+            .map(Main::handleOffer);
 
         final Observable<SinkOperation<Call>> updateStatusAck = events
             .filter(event -> event.getType() == Event.Type.UPDATE && event.getUpdate().getStatus().hasUuid())
@@ -170,8 +117,52 @@ public final class Main {
         final Subscription sink = client.sink(calls);
         Thread.sleep(Integer.MAX_VALUE); //TODO: Figure out something better than this
         sink.unsubscribe();
-        setFrameworkIdSubscription.unsubscribe();
         errorLoggerSubscription.unsubscribe();
+    }
+
+    @NotNull
+    private static SinkOperation<Call> handleOffer(@NotNull final Tuple2<Offer, State> t) {
+        final Offer offer = t._1;
+        final State state = t._2;
+        final int offerCount = state.getOfferCounter().incrementAndGet();
+
+        final FrameworkID frameworkId = state.getFwId();
+        final AgentID agentId = offer.getAgentId();
+        final List<OfferID> ids = newArrayList(offer.getId());
+
+        final Map<String, List<Resource>> resources = offer.getResourcesList()
+            .stream()
+            .collect(groupingBy(Resource::getName));
+        final List<Resource> cpuList = resources.get("cpus");
+        final List<Resource> memList = resources.get("mem");
+        if (cpuList != null && !cpuList.isEmpty() && memList != null && !memList.isEmpty()) {
+            final Resource cpus = cpuList.iterator().next();
+            final Resource mem = memList.iterator().next();
+            final List<TaskInfo> tasks = newArrayList();
+
+            double availableCpu = cpus.getScalar().getValue();
+            double availableMem = mem.getScalar().getValue();
+            final double cpusPerTask = state.getCpusPerTask();
+            final double memMbPerTask = state.getMemMbPerTask();
+            while (availableCpu >= cpusPerTask && availableMem >= memMbPerTask) {
+                availableCpu -= cpusPerTask;
+                availableMem -= memMbPerTask;
+                final String taskId = String.format("task-%d-%d", offerCount, state.getTotalTaskCounter().incrementAndGet());
+                tasks.add(sleepTask(agentId, taskId, cpusPerTask, memMbPerTask));
+            }
+
+            if (!tasks.isEmpty()) {
+                LOGGER.info("Launching {} tasks", tasks.size());
+                return sink(
+                    sleep(frameworkId, ids, tasks),
+                    () -> tasks.forEach(task -> state.put(task.getTaskId(), TaskState.TASK_STAGING))
+                );
+            } else {
+                return sink(decline(frameworkId, ids));
+            }
+        } else {
+            return sink(decline(frameworkId, ids));
+        }
     }
 
     @NotNull
@@ -195,7 +186,7 @@ public final class Main {
     }
 
     @NotNull
-    private static TaskInfo sleepTask(@NotNull final AgentID agentId, @NotNull final String taskId, final double cpus, final int mem) {
+    private static TaskInfo sleepTask(@NotNull final AgentID agentId, @NotNull final String taskId, final double cpus, final double mem) {
         return TaskInfo.newBuilder()
             .setName(taskId)
             .setTaskId(
@@ -208,7 +199,7 @@ public final class Main {
                     .setEnvironment(Environment.newBuilder()
                         .addVariables(
                             Environment.Variable.newBuilder()
-                                .setName("SLEEP_SECONDS").setValue("60")
+                                .setName("SLEEP_SECONDS").setValue("15")
                         ))
                     .setValue("env | sort && sleep $SLEEP_SECONDS")
             )
