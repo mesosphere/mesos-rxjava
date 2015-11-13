@@ -26,6 +26,7 @@ import org.slf4j.LoggerFactory;
 import rx.Observable;
 import rx.Subscription;
 
+import java.net.URI;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -44,20 +45,18 @@ public final class Main {
 
     public static void main(final String[] args) {
         try {
-            if (args.length != 3) {
+            if (args.length != 2) {
                 final String className = Main.class.getCanonicalName();
-                System.err.println("Usage: java -cp <application-jar> " + className + " <host> <port> <cpus-per-task>");
+                System.err.println("Usage: java -cp <application-jar> " + className + " <mesos_uri> <cpus-per-task>");
             }
 
-            final String host = args[0];
-            final int port = Integer.parseInt(args[1]);
-            final double cpusPerTask = Double.parseDouble(args[2]);
+            final URI mesosUri = URI.create(args[0]);
+            final double cpusPerTask = Double.parseDouble(args[1]);
             final FrameworkID fwId = FrameworkID.newBuilder().setValue("testing-" + UUID.randomUUID()).build();
             final State state = new State(fwId, cpusPerTask, 32);
 
             final MesosSchedulerClient<Call, Event> client = MesosSchedulerClient.usingProtos(
-                host,
-                port,
+                mesosUri,
                 userAgentEntryForMavenArtifact("org.apache.mesos.rx.java.example", "mesos-rxjava-example")
             );
             _main(state, client);
