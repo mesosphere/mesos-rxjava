@@ -10,6 +10,7 @@ import org.jetbrains.annotations.NotNull;
 import org.junit.Test;
 
 import java.net.URI;
+import java.util.Base64;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -78,6 +79,27 @@ public final class MesosSchedulerClientTest {
             .first();
 
         assertThat(request.getUri()).isEqualTo("/glavin/api/v1/scheduler");
+    }
+
+    @Test
+    public void testBasicAuthHeaderAddedToRequestWhenUserInfoPresentInUri() throws Exception {
+        final MesosSchedulerClient<Protos.Call, Protos.Event> client = MesosSchedulerClient.usingProtos(
+            URI.create("http://testuser:testpassword@localhost:12345/api/v1/scheduler"),
+            literal("testing", "latest")
+        );
+
+        final HttpClientRequest<ByteBuf> request = client.createPost.call(ACK)
+            .toBlocking()
+            .first();
+
+        final Map<String, String> headers = headersToMap(request.getHeaders());
+        assertThat(headers).containsKeys("Authorization");
+        final String authorization = headers.get("Authorization");
+        assertThat(authorization).isEqualTo("Basic dGVzdHVzZXI6dGVzdHBhc3N3b3Jk");
+
+        final String base64UserPass = authorization.substring("Basic ".length());
+        final String userPass = new String(Base64.getDecoder().decode(base64UserPass));
+        assertThat(userPass).isEqualTo("testuser:testpassword");
     }
 
     @NotNull
