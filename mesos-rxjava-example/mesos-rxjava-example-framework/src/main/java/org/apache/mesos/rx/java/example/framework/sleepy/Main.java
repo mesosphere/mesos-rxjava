@@ -35,6 +35,7 @@ import static com.google.common.collect.Lists.newArrayList;
 import static java.util.stream.Collectors.groupingBy;
 import static org.apache.mesos.rx.java.ProtoUtils.decline;
 import static org.apache.mesos.rx.java.SinkOperations.sink;
+import static org.apache.mesos.rx.java.UserAgentEntries.userAgentEntryForMavenArtifact;
 import static rx.Observable.from;
 import static rx.Observable.just;
 
@@ -54,7 +55,11 @@ public final class Main {
             final FrameworkID fwId = FrameworkID.newBuilder().setValue("testing-" + UUID.randomUUID()).build();
             final State state = new State(fwId, cpusPerTask, 32);
 
-            final MesosSchedulerClient<Call, Event> client = MesosSchedulerClient.usingProtos(host, port);
+            final MesosSchedulerClient<Call, Event> client = MesosSchedulerClient.usingProtos(
+                host,
+                port,
+                userAgentEntryForMavenArtifact("org.apache.mesos.rx.java.example", "mesos-rxjava-example")
+            );
             _main(state, client);
         } catch (Exception e) {
             LOGGER.error("Unhandled exception caught at main", e);
