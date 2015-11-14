@@ -17,6 +17,7 @@
 package org.apache.mesos.rx.java;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.net.HttpHeaders;
 import io.netty.buffer.ByteBuf;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import io.netty.util.CharsetUtil;
@@ -35,11 +36,14 @@ import rx.functions.Func1;
 import rx.schedulers.Schedulers;
 
 import java.net.URI;
+import java.util.Base64;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 
+import static org.apache.mesos.rx.java.UserAgentEntries.userAgentEntryForGradleArtifact;
+import static org.apache.mesos.rx.java.UserAgentEntries.userAgentEntryForMavenArtifact;
 import static rx.Observable.just;
 
 public final class MesosSchedulerClient<Send, Receive> {
@@ -84,8 +88,8 @@ public final class MesosSchedulerClient<Send, Receive> {
 
         final UserAgent userAgent = new UserAgent(
             applicationUserAgentEntry,
-            UserAgentEntries.userAgentEntryForMavenArtifact("org.apache.mesos.rx.java", "mesos-rxjava-core"),
-            UserAgentEntries.userAgentEntryForGradleArtifact("rxnetty")
+            userAgentEntryForMavenArtifact("org.apache.mesos.rx.java", "mesos-rxjava-core"),
+            userAgentEntryForGradleArtifact("rxnetty")
         );
 
         httpClient = RxNetty.<ByteBuf, ByteBuf>newHttpClientBuilder(mesosUri.getHost(), mesosUri.getPort())
@@ -95,12 +99,20 @@ public final class MesosSchedulerClient<Send, Receive> {
 
         createPost = (Send s) -> {
             final byte[] bytes = sendCodec.encode(s);
-            final HttpClientRequest<ByteBuf> request =
-                HttpClientRequest.createPost(mesosUri.getPath())
-                    .withHeader("Content-Type", sendCodec.mediaType())
-                    .withHeader("Accept", receiveCodec.mediaType())
-                    .withHeader("User-Agent", userAgent.toString());
+            HttpClientRequest<ByteBuf> request = HttpClientRequest.createPost(mesosUri.getPath())
+                .withHeader("User-Agent", userAgent.toString())
+                .withHeader("Content-Type", sendCodec.mediaType())
+                .withHeader("Accept", receiveCodec.mediaType())
+                .withHeader("Accept", receiveCodec.mediaType());
 
+            final String userInfo = mesosUri.getUserInfo();
+            if (userInfo != null) {
+                //Won't actually work until https://issues.apache.org/jira/browse/MESOS-3923 is fixed
+                request = request.withHeader(
+                    HttpHeaders.AUTHORIZATION,
+                    String.format("Basic %s", Base64.getEncoder().encodeToString(userInfo.getBytes()))
+                );
+            }
             return just(
                 request
                     .withContent(bytes)
