@@ -16,6 +16,7 @@
 
 package org.apache.mesos.rx.java;
 
+import com.google.common.annotations.VisibleForTesting;
 import io.netty.buffer.ByteBuf;
 import io.reactivex.netty.RxNetty;
 import io.reactivex.netty.protocol.http.AbstractHttpContentHolder;
@@ -35,6 +36,7 @@ import rx.functions.Func1;
 import rx.schedulers.Schedulers;
 
 import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
 
 import static rx.Observable.just;
 
@@ -44,9 +46,16 @@ public final class MesosSchedulerClient<Send, Receive> {
     @NotNull
     public static MesosSchedulerClient<Call, Protos.Event> usingProtos(
         @NotNull final String host,
-        final int port
+        final int port,
+        @NotNull final Function<Class<?>, UserAgentEntry> applicationUserAgentEntry
     ) {
-        return new MesosSchedulerClient<>(host, port, "rx-mesos", MessageCodecs.PROTOS_CALL, MessageCodecs.PROTOS_EVENT);
+        return new MesosSchedulerClient<>(
+            host,
+            port,
+            applicationUserAgentEntry,
+            MessageCodecs.PROTOS_CALL,
+            MessageCodecs.PROTOS_EVENT
+        );
     }
 
 
@@ -60,30 +69,43 @@ public final class MesosSchedulerClient<Send, Receive> {
     private final HttpClient<ByteBuf, ByteBuf> httpClient;
 
     @NotNull
-    private final Func1<Send, Observable<HttpClientRequest<ByteBuf>>> createPost;
+    @VisibleForTesting
+    final Func1<Send, Observable<HttpClientRequest<ByteBuf>>> createPost;
 
 
     public MesosSchedulerClient(
         @NotNull final String host,
         final int port,
-        @NotNull final String name,
+        @NotNull final Function<Class<?>, UserAgentEntry> applicationUserAgentEntry,
         @NotNull final MessageCodec<Send> sendCodec,
         @NotNull final MessageCodec<Receive> receiveCodec
     ) {
         this.sendCodec = sendCodec;
         this.receiveCodec = receiveCodec;
 
+        final UserAgent userAgent = new UserAgent(
+            applicationUserAgentEntry,
+            UserAgentEntries.userAgentEntryForMavenArtifact("org.apache.mesos.rx.java", "mesos-rxjava-core"),
+            UserAgentEntries.userAgentEntryForGradleArtifact("rxnetty")
+        );
+
         httpClient = RxNetty.<ByteBuf, ByteBuf>newHttpClientBuilder(host, port)
-            .withName(name)
+            .withName(userAgent.getEntries().get(0).getName())
             .pipelineConfigurator(new HttpClientPipelineConfigurator<>())
             .build();
 
+
         createPost = (Send s) -> {
             final byte[] bytes = sendCodec.encode(s);
-            return just(HttpClientRequest.createPost("/api/v1/scheduler")
-                .withHeader("Content-Type", sendCodec.mediaType())
-                .withHeader("Accept", receiveCodec.mediaType())
-                .withContent(bytes)
+            final HttpClientRequest<ByteBuf> request =
+                HttpClientRequest.createPost("/api/v1/scheduler")
+                    .withHeader("Content-Type", sendCodec.mediaType())
+                    .withHeader("Accept", receiveCodec.mediaType())
+                    .withHeader("User-Agent", userAgent.toString());
+
+            return just(
+                request
+                    .withContent(bytes)
             );
         };
     }
@@ -114,4 +136,5 @@ public final class MesosSchedulerClient<Send, Receive> {
             .observeOn(Rx.compute())
             .subscribe(subscriber);
     }
+
 }
