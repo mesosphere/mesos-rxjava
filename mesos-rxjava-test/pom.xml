@@ -3,18 +3,18 @@
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <parent>
-        <groupId>org.apache.mesos.rx.java</groupId>
         <artifactId>mesos-rxjava</artifactId>
+        <groupId>org.apache.mesos.rx.java</groupId>
         <version>0.1.0-SNAPSHOT</version>
     </parent>
     <modelVersion>4.0.0</modelVersion>
 
-    <artifactId>mesos-rxjava-recordio</artifactId>
+    <artifactId>mesos-rxjava-test</artifactId>
 
-    <name>Apache Mesos RxJava Client :: RecordIO Operator</name>
+    <name>Apache Mesos RxJava Client :: Test Tools</name>
 
     <description>
-        rx.Observable.Operator for extracting RecordIO messages from a stream of ByteBuf
+        A set of tools to help when writing tests.
     </description>
 
     <properties>
@@ -23,22 +23,10 @@
 
     <dependencies>
         <dependency>
-            <groupId>io.reactivex</groupId>
-            <artifactId>rxjava</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>io.netty</groupId>
-            <artifactId>netty-codec-http</artifactId>
-        </dependency>
-        <dependency>
             <groupId>org.apache.mesos</groupId>
             <artifactId>mesos</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.mesos.rx.java</groupId>
-            <artifactId>mesos-rxjava-test</artifactId>
         </dependency>
     </dependencies>
+
 
 </project>

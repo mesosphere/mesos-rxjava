@@ -40,9 +40,7 @@
         </dependency>
         <dependency>
             <groupId>org.apache.mesos.rx.java</groupId>
-            <artifactId>mesos-rxjava-recordio</artifactId>
-            <type>test-jar</type>
-            <scope>test</scope>
+            <artifactId>mesos-rxjava-test</artifactId>
         </dependency>
         <dependency>
             <groupId>org.apache.mesos</groupId>

@@ -2,6 +2,7 @@ package org.apache.mesos.rx.java.recordio;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
+import org.apache.mesos.rx.java.test.TestingProtos;
 import org.apache.mesos.v1.scheduler.Protos.Event;
 import org.junit.Test;
 import org.junit.runner.RunWith;
