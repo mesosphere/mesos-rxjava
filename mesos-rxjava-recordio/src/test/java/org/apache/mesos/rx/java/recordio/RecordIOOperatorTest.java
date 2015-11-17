@@ -19,6 +19,7 @@ package org.apache.mesos.rx.java.recordio;
 import com.google.protobuf.InvalidProtocolBufferException;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
+import org.apache.mesos.rx.java.test.TestingProtos;
 import org.apache.mesos.v1.scheduler.Protos.Event;
 import org.jetbrains.annotations.NotNull;
 import org.junit.Test;

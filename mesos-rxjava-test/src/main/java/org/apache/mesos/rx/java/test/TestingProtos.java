@@ -14,12 +14,11 @@
  * limitations under the License.
  */
 
-package org.apache.mesos.rx.java.recordio;
+package org.apache.mesos.rx.java.test;
 
+import com.google.common.collect.Lists;
 import org.apache.mesos.v1.scheduler.Protos;
 import org.jetbrains.annotations.NotNull;
-
-import static com.google.common.collect.Lists.newArrayList;
 
 public final class TestingProtos {
     @NotNull
@@ -59,7 +58,7 @@ public final class TestingProtos {
             .setType(Protos.Event.Type.OFFERS)
             .setOffers(
                 Protos.Event.Offers.newBuilder()
-                .addAllOffers(newArrayList(
+                .addAllOffers(Lists.newArrayList(
                     org.apache.mesos.v1.Protos.Offer.newBuilder()
                         .setHostname(hostname)
                         .setId(org.apache.mesos.v1.Protos.OfferID.newBuilder().setValue(offerId))

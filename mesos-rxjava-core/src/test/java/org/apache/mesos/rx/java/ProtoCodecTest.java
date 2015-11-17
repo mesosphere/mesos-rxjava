@@ -1,7 +1,7 @@
 package org.apache.mesos.rx.java;
 
 import com.google.protobuf.InvalidProtocolBufferException;
-import org.apache.mesos.rx.java.recordio.TestingProtos;
+import org.apache.mesos.rx.java.test.TestingProtos;
 import org.jetbrains.annotations.NotNull;
 import org.junit.Test;
 
