@@ -24,7 +24,6 @@ import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import rx.Observable;
-import rx.Subscription;
 
 import java.net.URI;
 import java.util.List;
@@ -55,18 +54,21 @@ public final class Main {
             final FrameworkID fwId = FrameworkID.newBuilder().setValue("testing-" + UUID.randomUUID()).build();
             final State state = new State(fwId, cpusPerTask, 32);
 
-            final MesosSchedulerClient<Call, Event> client = MesosSchedulerClient.usingProtos(
-                mesosUri,
-                userAgentEntryForMavenArtifact("org.apache.mesos.rx.java.example", "mesos-rxjava-example")
-            );
-            _main(state, client);
-        } catch (Exception e) {
+            final MesosSchedulerClientBuilder<Call, Event> clientBuilder = MesosSchedulerClientBuilders.usingProtos()
+                .mesosUri(mesosUri)
+                .applicationUserAgentEntry(userAgentEntryForMavenArtifact("org.apache.mesos.rx.java.example", "mesos-rxjava-example"));
+
+            _main(state, clientBuilder);
+        } catch (Throwable e) {
             LOGGER.error("Unhandled exception caught at main", e);
             System.exit(1);
         }
     }
 
-    private static void _main(@NotNull final State stateObject, @NotNull final MesosSchedulerClient<Call, Event> client) throws InterruptedException {
+    private static void _main(
+        @NotNull final State stateObject,
+        @NotNull final MesosSchedulerClientBuilder<Call, Event> clientBuilder
+    ) throws Throwable {
 
         final Call subscribeCall = Call.newBuilder()
             .setFrameworkId(stateObject.getFwId())
@@ -84,44 +86,45 @@ public final class Main {
             )
             .build();
 
-        final Observable<Event> events = client.openEventStream(subscribeCall)
-            .share()
-            .observeOn(Rx.compute());
-
         final Observable<State> stateObservable = just(stateObject).repeat();
 
-        final Observable<SinkOperation<Call>> offerEvaluations = events
-            .filter(event -> event.getType() == Event.Type.OFFERS)
-            .flatMap(event -> from(event.getOffers().getOffersList()))
-            .zipWith(stateObservable, Tuple2::create)
-            .map(Main::handleOffer);
+        clientBuilder
+            .subscribe(subscribeCall)
+            .processStream(unicastEvents -> {
+                final Observable<Event> events = unicastEvents.share();
 
-        final Observable<SinkOperation<Call>> updateStatusAck = events
-            .filter(event -> event.getType() == Event.Type.UPDATE && event.getUpdate().getStatus().hasUuid())
-            .zipWith(stateObservable, Tuple2::create)
-            .doOnNext((Tuple2<Event, State> t) -> {
-                final Event event = t._1;
-                final State state = t._2;
-                final TaskStatus status = event.getUpdate().getStatus();
-                state.put(status.getTaskId(), status.getState());
-            })
-            .map((Tuple2<Event, State> t) -> {
-                final TaskStatus status = t._1.getUpdate().getStatus();
-                return ProtoUtils.ackUpdate(t._2.getFwId(), status.getUuid(), status.getAgentId(), status.getTaskId());
-            })
-            .map(SinkOperations::create);
+                final Observable<Optional<SinkOperation<Call>>> offerEvaluations = events
+                    .filter(event -> event.getType() == Event.Type.OFFERS)
+                    .flatMap(event -> from(event.getOffers().getOffersList()))
+                    .zipWith(stateObservable, Tuple2::create)
+                    .map(Main::handleOffer)
+                    .map(Optional::of);
 
-        final Observable<SinkOperation<Call>> calls = offerEvaluations.mergeWith(updateStatusAck);
+                final Observable<Optional<SinkOperation<Call>>> updateStatusAck = events
+                    .filter(event -> event.getType() == Event.Type.UPDATE && event.getUpdate().getStatus().hasUuid())
+                    .zipWith(stateObservable, Tuple2::create)
+                    .doOnNext((Tuple2<Event, State> t) -> {
+                        final Event event = t._1;
+                        final State state = t._2;
+                        final TaskStatus status = event.getUpdate().getStatus();
+                        state.put(status.getTaskId(), status.getState());
+                    })
+                    .map((Tuple2<Event, State> t) -> {
+                        final TaskStatus status = t._1.getUpdate().getStatus();
+                        return ProtoUtils.ackUpdate(t._2.getFwId(), status.getUuid(), status.getAgentId(), status.getTaskId());
+                    })
+                    .map(SinkOperations::create)
+                    .map(Optional::of);
 
-        final Subscription errorLoggerSubscription = events
-            .filter(event -> event.getType() == Event.Type.UPDATE && event.getUpdate().getStatus().getState() == TaskState.TASK_ERROR)
-            .doOnNext(e -> LOGGER.warn("Task Error: {}", ProtoUtils.protoToString(e)))
-            .subscribe();
+                final Observable<Optional<SinkOperation<Call>>> errorLogger = events
+                    .filter(event -> event.getType() == Event.Type.UPDATE && event.getUpdate().getStatus().getState() == TaskState.TASK_ERROR)
+                    .doOnNext(e -> LOGGER.warn("Task Error: {}", ProtoUtils.protoToString(e)))
+                    .map(e -> Optional.empty());
 
-        final Subscription sink = client.sink(calls);
-        Thread.sleep(Integer.MAX_VALUE); //TODO: Figure out something better than this
-        sink.unsubscribe();
-        errorLoggerSubscription.unsubscribe();
+                return offerEvaluations.mergeWith(updateStatusAck).mergeWith(errorLogger);
+            });
+
+        clientBuilder.build().openStream().await();
     }
 
     @NotNull

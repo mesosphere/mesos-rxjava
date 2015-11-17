@@ -5,20 +5,18 @@ import com.google.protobuf.ByteString;
 import io.netty.buffer.ByteBuf;
 import io.reactivex.netty.protocol.http.client.HttpClientRequest;
 import io.reactivex.netty.protocol.http.client.HttpRequestHeaders;
+import org.apache.mesos.rx.java.test.TestingProtos;
 import org.apache.mesos.v1.scheduler.Protos;
 import org.jetbrains.annotations.NotNull;
 import org.junit.Test;
+import rx.Observable;
+import rx.functions.Func1;
 
 import java.net.URI;
-import java.util.Base64;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 import java.util.regex.Pattern;
 
-import static org.apache.mesos.rx.java.UserAgentEntries.literal;
-import static org.apache.mesos.rx.java.UserAgentEntries.userAgentEntryForGradleArtifact;
-import static org.apache.mesos.rx.java.UserAgentEntries.userAgentEntryForMavenArtifact;
+import static org.apache.mesos.rx.java.UserAgentEntries.*;
 import static org.apache.mesos.v1.Protos.*;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -32,12 +30,14 @@ public final class MesosSchedulerClientTest {
     );
 
     @Test
-    public void testUserAgentGenerationIsCorrect() throws Exception {
+    public void testUserAgentContains_MesosRxJavaCore_RxNetty() throws Exception {
         final String clientName = "unit-tests";
-        final MesosSchedulerClient<Protos.Call, Protos.Event> client = MesosSchedulerClient.usingProtos(
-            URI.create("http://localhost:12345"),
-            literal(clientName, "latest")
-        );
+        final MesosSchedulerClient<Protos.Call, Protos.Event> client = MesosSchedulerClientBuilders.usingProtos()
+            .mesosUri(URI.create("http://localhost:12345"))
+            .applicationUserAgentEntry(literal(clientName, "latest"))
+            .subscribe(TestingProtos.SUBSCRIBE)
+            .processStream(events -> events.map(e -> Optional.empty()))
+            .build();
 
         final HttpClientRequest<ByteBuf> request = client.createPost
             .call(ACK)
@@ -69,12 +69,16 @@ public final class MesosSchedulerClientTest {
 
     @Test
     public void testRequestUriFromPassedUri() throws Exception {
-        final MesosSchedulerClient<Protos.Call, Protos.Event> client = MesosSchedulerClient.usingProtos(
+        final Func1<String, Observable<HttpClientRequest<ByteBuf>>> createPost = MesosSchedulerClient.curryCreatePost(
             URI.create("http://localhost:12345/glavin/api/v1/scheduler"),
-            literal("testing", "latest")
+            MessageCodecs.UTF8_STRING,
+            MessageCodecs.UTF8_STRING,
+            new UserAgent(
+                literal("testing", "latest")
+            )
         );
 
-        final HttpClientRequest<ByteBuf> request = client.createPost.call(ACK)
+        final HttpClientRequest<ByteBuf> request = createPost.call("something")
             .toBlocking()
             .first();
 
@@ -83,12 +87,16 @@ public final class MesosSchedulerClientTest {
 
     @Test
     public void testBasicAuthHeaderAddedToRequestWhenUserInfoPresentInUri() throws Exception {
-        final MesosSchedulerClient<Protos.Call, Protos.Event> client = MesosSchedulerClient.usingProtos(
+        final Func1<String, Observable<HttpClientRequest<ByteBuf>>> createPost = MesosSchedulerClient.curryCreatePost(
             URI.create("http://testuser:testpassword@localhost:12345/api/v1/scheduler"),
-            literal("testing", "latest")
+            MessageCodecs.UTF8_STRING,
+            MessageCodecs.UTF8_STRING,
+            new UserAgent(
+                literal("testing", "latest")
+            )
         );
 
-        final HttpClientRequest<ByteBuf> request = client.createPost.call(ACK)
+        final HttpClientRequest<ByteBuf> request = createPost.call("something")
             .toBlocking()
             .first();
 

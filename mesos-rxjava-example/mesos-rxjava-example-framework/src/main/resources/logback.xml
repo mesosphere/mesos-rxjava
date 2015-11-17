@@ -25,11 +25,11 @@
         </encoder>
     </appender>
 
-    <logger name="org.apache.mesos.rx.java" level="info"/>
+    <logger name="org.apache.mesos.rx.java" level="debug"/>
     <!--<logger name="org.apache.mesos.rx.java.example.framework.sleepy.State" level="debug"/>-->
     <logger name="io.netty.handler.logging.LoggingHandler" level="info"/>
 
-    <root level="debug">
+    <root level="info">
         <appender-ref ref="STDOUT"/>
     </root>
 
