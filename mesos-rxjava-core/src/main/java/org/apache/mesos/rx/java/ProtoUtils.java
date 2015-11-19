@@ -17,7 +17,6 @@
 package org.apache.mesos.rx.java;
 
 import com.google.protobuf.ByteString;
-import com.google.protobuf.Message;
 import org.apache.mesos.v1.Protos.AgentID;
 import org.apache.mesos.v1.Protos.FrameworkID;
 import org.apache.mesos.v1.Protos.OfferID;
@@ -28,14 +27,30 @@ import org.jetbrains.annotations.NotNull;
 import java.util.List;
 import java.util.regex.Pattern;
 
+/**
+ * A set of utility methods that make working with Mesos Protos easier.
+ */
 public final class ProtoUtils {
     private static final Pattern PROTO_TO_STRING = Pattern.compile(" *\\n *");
 
     private ProtoUtils() {}
 
+    /**
+     * Convenience method to create an {@link org.apache.mesos.v1.scheduler.Protos.Call.Type#ACKNOWLEDGE}
+     * {@link org.apache.mesos.v1.scheduler.Protos.Call}.
+     * @param frameworkId    The {@link FrameworkID} to be set on the {@link org.apache.mesos.v1.scheduler.Protos.Call}
+     * @param uuid           The {@link org.apache.mesos.v1.Protos.TaskStatus#getUuid() uuid} from the
+     *                       {@link Protos.Event.Update#getStatus() TaskStatus} received from Mesos.
+     * @param agentId        The {@link org.apache.mesos.v1.Protos.TaskStatus#getAgentId() agentId} from the
+     *                       {@link Protos.Event.Update#getStatus() TaskStatus} received from Mesos.
+     * @param taskId         The {@link org.apache.mesos.v1.Protos.TaskStatus#getTaskId() taskId} from the
+     *                       {@link Protos.Event.Update#getStatus() TaskStatus} received from Mesos.
+     * @return  A {@link org.apache.mesos.v1.scheduler.Protos.Call} with a configured
+     *          {@link org.apache.mesos.v1.scheduler.Protos.Call.Acknowledge}.
+     */
     @NotNull
     public static Protos.Call ackUpdate(
-        @NotNull FrameworkID frameworkId,
+        @NotNull final FrameworkID frameworkId,
         @NotNull final ByteString uuid,
         @NotNull final AgentID agentId,
         @NotNull final TaskID taskId
@@ -53,11 +68,26 @@ public final class ProtoUtils {
             .build();
     }
 
+    /**
+     * Utility method to make logging of protos a little better than what is done by default.
+     * @param message    The proto message to be "stringified"
+     * @return  A string representation of the provided {@code message} surrounded with curly braces ('{}') and all
+     *          new lines replaced with a space.
+     */
     @NotNull
-    public static String protoToString(@NotNull final Message message) {
+    public static String protoToString(@NotNull final Object message) {
         return "{ " + PROTO_TO_STRING.matcher(message.toString()).replaceAll(" ").trim() + " }";
     }
 
+    /**
+     * Convenience method to create an {@link org.apache.mesos.v1.scheduler.Protos.Call.Type#DECLINE}
+     * {@link org.apache.mesos.v1.scheduler.Protos.Call}.
+     * @param frameworkId    The {@link FrameworkID} to be set on the {@link org.apache.mesos.v1.scheduler.Protos.Call}
+     * @param offerIds       A list of {@link org.apache.mesos.v1.Protos.OfferID} from the
+     *                       {@link org.apache.mesos.v1.Protos.Offer}s received from Mesos.
+     * @return  A {@link org.apache.mesos.v1.scheduler.Protos.Call} with a configured
+     *          {@link org.apache.mesos.v1.scheduler.Protos.Call.Decline}.
+     */
     @NotNull
     public static Protos.Call decline(@NotNull final FrameworkID frameworkId, @NotNull final List<OfferID> offerIds) {
         return Protos.Call.newBuilder()

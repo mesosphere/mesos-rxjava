@@ -3,6 +3,9 @@ package org.apache.mesos.rx.java;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+/**
+ * A specific Entry to be listed in the HTTP User-Agent header
+ */
 public final class UserAgentEntry {
     @NotNull
     private final String name;

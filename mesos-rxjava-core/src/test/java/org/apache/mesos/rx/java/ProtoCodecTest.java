@@ -17,13 +17,13 @@ public class ProtoCodecTest {
 
     @NotNull
     private static final byte[] SERIALIZED_OFFER = Base64.getDecoder().decode(
-        "CAIaagpoCgcKBW9mZmVyEgYKBGZydzEaBwoFc2xhdmUiBWhvc3QxKhYKBGNwdXMQABoJCQA"
-            + "AAAAAACBAMgEqKhUKA21lbRAAGgkJAAAAAAAAwEAyASoqFgoEZGlzaxAAGgkJAAAAAAAAwEAyASo="
+        "CAIabApqCggKBm9mZmVyMRIGCgRmcncxGggKBmFnZW50MSIFaG9zdDEqFgoEY3B1cxAAGgkJAAAAAAAAIEAyASoqFQoDbWVtEAAaCQkAAAA" +
+            "AAADAQDIBKioWCgRkaXNrEAAaCQkAAAAAAADAQDIBKg=="
     );
 
     @NotNull
     private static final byte[] SERIALIZED_SUBSCRIBED =
-        Base64.getDecoder().decode("CAESNQoqCigyMDE1MTAwOC0xNjE0MTctMTY3NzczNDMtNTA1MC0yMDUzMi0wMDA4EQAAAAAAAC5A");
+        Base64.getDecoder().decode("CAESMQomCiRhN2NmZDI1Yy03OWJkLTQ4MWMtOTFjYy02OTJlNWRiMWVjM2QRAAAAAAAALkA=");
 
     @Test
     public void testEncode() {

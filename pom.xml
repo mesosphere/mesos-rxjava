@@ -361,6 +361,9 @@
     <profiles>
         <profile>
             <id>release</id>
+            <properties>
+                <maven.test.skip>true</maven.test.skip>
+            </properties>
             <build>
                 <plugins>
                     <plugin>
@@ -422,6 +425,14 @@
                                 <goals>
                                     <goal>jar</goal>
                                 </goals>
+                            </execution>
+                            <execution>
+                                <id>aggregate</id>
+                                <goals>
+                                    <goal>aggregate</goal>
+                                    <goal>aggregate-jar</goal>
+                                </goals>
+                                <phase>package</phase>
                             </execution>
                         </executions>
                     </plugin>

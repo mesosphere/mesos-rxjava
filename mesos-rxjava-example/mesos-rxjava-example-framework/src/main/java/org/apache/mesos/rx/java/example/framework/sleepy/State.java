@@ -1,6 +1,5 @@
 package org.apache.mesos.rx.java.example.framework.sleepy;
 
-import org.apache.mesos.v1.Protos;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -9,24 +8,25 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static com.google.common.collect.Maps.newConcurrentMap;
+import static org.apache.mesos.rx.java.ProtoUtils.protoToString;
 
-final class State {
+final class State<FwId, TaskId, TaskState> {
     private static final Logger LOGGER = LoggerFactory.getLogger(State.class);
 
     private final double cpusPerTask;
     private final double memMbPerTask;
 
     @NotNull
-    private final Map<Protos.TaskID, Protos.TaskState> taskStates;
+    private final Map<TaskId, TaskState> taskStates;
     @NotNull
     private final AtomicInteger offerCounter = new AtomicInteger();
     @NotNull
     private final AtomicInteger totalTaskCounter = new AtomicInteger();
 
     @NotNull
-    private final Protos.FrameworkID fwId;
+    private final FwId fwId;
 
-    public State(@NotNull final Protos.FrameworkID fwId, final double cpusPerTask, final double memMbPerTask) {
+    public State(@NotNull final FwId fwId, final double cpusPerTask, final double memMbPerTask) {
         this.fwId = fwId;
         this.cpusPerTask = cpusPerTask;
         this.memMbPerTask = memMbPerTask;
@@ -34,7 +34,7 @@ final class State {
     }
 
     @NotNull
-    public Protos.FrameworkID getFwId() {
+    public FwId getFwId() {
         return fwId;
     }
 
@@ -56,8 +56,8 @@ final class State {
         return totalTaskCounter;
     }
 
-    public void put(final Protos.TaskID key, final Protos.TaskState value) {
-        LOGGER.debug("put(key : {}, value : {})", key.getValue(), value);
+    public void put(final TaskId key, final TaskState value) {
+        LOGGER.debug("put(key : {}, value : {})", protoToString(key), value);
         taskStates.put(key, value);
     }
 }

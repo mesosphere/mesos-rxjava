@@ -39,20 +39,32 @@ import static org.apache.mesos.rx.java.UserAgentEntries.userAgentEntryForMavenAr
 import static rx.Observable.from;
 import static rx.Observable.just;
 
-public final class Main {
-    private static final Logger LOGGER = LoggerFactory.getLogger(Main.class);
+/**
+ * A relatively simple Mesos framework that launches {@code sleep $SLEEP_SECONDS} tasks for offers it receives.
+ * This framework uses the Mesos HTTP Scheduler API.
+ */
+public final class Sleepy {
+    private static final Logger LOGGER = LoggerFactory.getLogger(Sleepy.class);
 
+    /**
+     * <pre><code>
+     * Usage: java -cp &lt;application-jar> org.apache.mesos.rx.java.example.framework.sleepy.Sleepy &lt;mesos-uri> &lt;cpus-per-task>
+     * mesos-uri        The fully qualified URI to the Mesos Master. (http://localhost:5050/api/v1/scheduler)
+     * cpus-per-task    The number of CPUs each task should claim from an offer.
+     * </code></pre>
+     * @param args    Application arguments mesos-uri and cpus-per-task.
+     */
     public static void main(final String[] args) {
         try {
             if (args.length != 2) {
-                final String className = Main.class.getCanonicalName();
-                System.err.println("Usage: java -cp <application-jar> " + className + " <mesos_uri> <cpus-per-task>");
+                final String className = Sleepy.class.getCanonicalName();
+                System.err.println("Usage: java -cp <application-jar> " + className + " <mesos-uri> <cpus-per-task>");
             }
 
             final URI mesosUri = URI.create(args[0]);
             final double cpusPerTask = Double.parseDouble(args[1]);
-            final FrameworkID fwId = FrameworkID.newBuilder().setValue("testing-" + UUID.randomUUID()).build();
-            final State state = new State(fwId, cpusPerTask, 32);
+            final FrameworkID fwId = FrameworkID.newBuilder().setValue("sleepy-" + UUID.randomUUID()).build();
+            final State<FrameworkID, TaskID, TaskState> state = new State<>(fwId, cpusPerTask, 32);
 
             final MesosSchedulerClientBuilder<Call, Event> clientBuilder = MesosSchedulerClientBuilders.usingProtos()
                 .mesosUri(mesosUri)
@@ -66,7 +78,7 @@ public final class Main {
     }
 
     private static void _main(
-        @NotNull final State stateObject,
+        @NotNull final State<FrameworkID, TaskID, TaskState> stateObject,
         @NotNull final MesosSchedulerClientBuilder<Call, Event> clientBuilder
     ) throws Throwable {
 
@@ -79,14 +91,14 @@ public final class Main {
                         FrameworkInfo.newBuilder()
                             .setId(stateObject.getFwId())
                             .setUser(Optional.ofNullable(System.getenv("user")).orElse("root")) // https://issues.apache.org/jira/browse/MESOS-3747
-                            .setName("testing")
+                            .setName("sleepy")
                             .setFailoverTimeout(0)
                             .build()
                     )
             )
             .build();
 
-        final Observable<State> stateObservable = just(stateObject).repeat();
+        final Observable<State<FrameworkID, TaskID, TaskState>> stateObservable = just(stateObject).repeat();
 
         clientBuilder
             .subscribe(subscribeCall)
@@ -97,19 +109,19 @@ public final class Main {
                     .filter(event -> event.getType() == Event.Type.OFFERS)
                     .flatMap(event -> from(event.getOffers().getOffersList()))
                     .zipWith(stateObservable, Tuple2::create)
-                    .map(Main::handleOffer)
+                    .map(Sleepy::handleOffer)
                     .map(Optional::of);
 
                 final Observable<Optional<SinkOperation<Call>>> updateStatusAck = events
                     .filter(event -> event.getType() == Event.Type.UPDATE && event.getUpdate().getStatus().hasUuid())
                     .zipWith(stateObservable, Tuple2::create)
-                    .doOnNext((Tuple2<Event, State> t) -> {
+                    .doOnNext((Tuple2<Event, State<FrameworkID, TaskID, TaskState>> t) -> {
                         final Event event = t._1;
-                        final State state = t._2;
+                        final State<FrameworkID, TaskID, TaskState> state = t._2;
                         final TaskStatus status = event.getUpdate().getStatus();
                         state.put(status.getTaskId(), status.getState());
                     })
-                    .map((Tuple2<Event, State> t) -> {
+                    .map((Tuple2<Event, State<FrameworkID, TaskID, TaskState>> t) -> {
                         final TaskStatus status = t._1.getUpdate().getStatus();
                         return ProtoUtils.ackUpdate(t._2.getFwId(), status.getUuid(), status.getAgentId(), status.getTaskId());
                     })
@@ -128,9 +140,9 @@ public final class Main {
     }
 
     @NotNull
-    private static SinkOperation<Call> handleOffer(@NotNull final Tuple2<Offer, State> t) {
+    private static SinkOperation<Call> handleOffer(@NotNull final Tuple2<Offer, State<FrameworkID, TaskID, TaskState>> t) {
         final Offer offer = t._1;
-        final State state = t._2;
+        final State<FrameworkID, TaskID, TaskState> state = t._2;
         final int offerCount = state.getOfferCounter().incrementAndGet();
 
         final FrameworkID frameworkId = state.getFwId();
@@ -194,6 +206,7 @@ public final class Main {
 
     @NotNull
     private static TaskInfo sleepTask(@NotNull final AgentID agentId, @NotNull final String taskId, final double cpus, final double mem) {
+        final String sleepSeconds = Optional.ofNullable(System.getenv("SLEEP_SECONDS")).orElse("15");
         return TaskInfo.newBuilder()
             .setName(taskId)
             .setTaskId(
@@ -206,7 +219,7 @@ public final class Main {
                     .setEnvironment(Environment.newBuilder()
                         .addVariables(
                             Environment.Variable.newBuilder()
-                                .setName("SLEEP_SECONDS").setValue("15")
+                                .setName("SLEEP_SECONDS").setValue(sleepSeconds)
                         ))
                     .setValue("env | sort && sleep $SLEEP_SECONDS")
             )

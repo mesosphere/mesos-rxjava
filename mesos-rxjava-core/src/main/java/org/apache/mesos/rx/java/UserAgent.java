@@ -9,6 +9,9 @@ import java.util.List;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+/**
+ * This class represents an HTTP User-Agent Header
+ */
 public final class UserAgent {
 
     private static final Joiner JOINER = Joiner.on(" ").skipNulls();
