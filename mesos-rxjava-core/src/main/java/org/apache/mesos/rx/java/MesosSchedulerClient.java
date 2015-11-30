@@ -24,14 +24,13 @@ import io.netty.util.CharsetUtil;
 import io.reactivex.netty.RxNetty;
 import io.reactivex.netty.protocol.http.client.*;
 import org.apache.mesos.rx.java.recordio.RecordIOOperator;
-import org.apache.mesos.v1.scheduler.Protos;
-import org.apache.mesos.v1.scheduler.Protos.Call;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import rx.Observable;
 import rx.Subscriber;
 import rx.Subscription;
+import rx.exceptions.Exceptions;
 import rx.functions.Func1;
 import rx.schedulers.Schedulers;
 
@@ -39,52 +38,55 @@ import java.net.URI;
 import java.util.Base64;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
+import java.util.Optional;
+import java.util.concurrent.*;
 import java.util.function.Function;
 
 import static org.apache.mesos.rx.java.UserAgentEntries.userAgentEntryForGradleArtifact;
 import static org.apache.mesos.rx.java.UserAgentEntries.userAgentEntryForMavenArtifact;
 import static rx.Observable.just;
 
+/**
+ * This class performs the necessary work to create an {@link Observable} of {@code Receive} from Mesos'
+ * <a target="_blank" href="https://github.com/apache/mesos/blob/master/docs/scheduler-http-api.md">HTTP Scheduler API</a>
+ * @param <Send>       The type of Objects to be sent to Mesos
+ * @param <Receive>    The type of Objects to expect from Mesos
+ * @see MesosSchedulerClientBuilder
+ * @see MesosSchedulerClientBuilders
+ */
 public final class MesosSchedulerClient<Send, Receive> {
     private static final Logger LOGGER = LoggerFactory.getLogger(MesosSchedulerClient.class);
 
     @NotNull
-    public static MesosSchedulerClient<Call, Protos.Event> usingProtos(
-        @NotNull final URI mesosUri,
-        @NotNull final Function<Class<?>, UserAgentEntry> applicationUserAgentEntry
-    ) {
-        return new MesosSchedulerClient<>(
-            mesosUri,
-            applicationUserAgentEntry,
-            MessageCodecs.PROTOS_CALL,
-            MessageCodecs.PROTOS_EVENT
-        );
-    }
-
+    private final ExecutorService exec = Executors.newSingleThreadExecutor(r -> new Thread(r, "stream-monitor-thread"));
 
     @NotNull
     private final MessageCodec<Send> sendCodec;
-
     @NotNull
     private final MessageCodec<Receive> receiveCodec;
-
     @NotNull
     private final HttpClient<ByteBuf, ByteBuf> httpClient;
+    @NotNull
+    private final Send subscribe;
+    @NotNull
+    private final Function<Observable<Receive>, Observable<Optional<SinkOperation<Send>>>> streamProcessor;
 
     @NotNull
     @VisibleForTesting
     final Func1<Send, Observable<HttpClientRequest<ByteBuf>>> createPost;
 
-
-    public MesosSchedulerClient(
+    MesosSchedulerClient(
         @NotNull final URI mesosUri,
         @NotNull final Function<Class<?>, UserAgentEntry> applicationUserAgentEntry,
         @NotNull final MessageCodec<Send> sendCodec,
-        @NotNull final MessageCodec<Receive> receiveCodec
+        @NotNull final MessageCodec<Receive> receiveCodec,
+        @NotNull final Send subscribe,
+        @NotNull final Function<Observable<Receive>, Observable<Optional<SinkOperation<Send>>>> streamProcessor
     ) {
         this.sendCodec = sendCodec;
         this.receiveCodec = receiveCodec;
+        this.subscribe = subscribe;
+        this.streamProcessor = streamProcessor;
 
         final UserAgent userAgent = new UserAgent(
             applicationUserAgentEntry,
@@ -97,35 +99,15 @@ public final class MesosSchedulerClient<Send, Receive> {
             .pipelineConfigurator(new HttpClientPipelineConfigurator<>())
             .build();
 
-        createPost = (Send s) -> {
-            final byte[] bytes = sendCodec.encode(s);
-            HttpClientRequest<ByteBuf> request = HttpClientRequest.createPost(mesosUri.getPath())
-                .withHeader("User-Agent", userAgent.toString())
-                .withHeader("Content-Type", sendCodec.mediaType())
-                .withHeader("Accept", receiveCodec.mediaType())
-                .withHeader("Accept", receiveCodec.mediaType());
-
-            final String userInfo = mesosUri.getUserInfo();
-            if (userInfo != null) {
-                //Won't actually work until https://issues.apache.org/jira/browse/MESOS-3923 is fixed
-                request = request.withHeader(
-                    HttpHeaders.AUTHORIZATION,
-                    String.format("Basic %s", Base64.getEncoder().encodeToString(userInfo.getBytes()))
-                );
-            }
-            return just(
-                request
-                    .withContent(bytes)
-            );
-        };
+        createPost = curryCreatePost(mesosUri, sendCodec, receiveCodec, userAgent);
     }
 
     @NotNull
-    public Observable<Receive> openEventStream(@NotNull final Send subscription) {
-        return createPost.call(subscription)
+    public AwaitableSubscription openStream() {
+        final Observable<Receive> receives = createPost.call(subscribe)
             .flatMap(httpClient::submit)
             .subscribeOn(Schedulers.io())
-            .flatMap(verifyResponseOk(subscription))
+            .flatMap(verifyResponseOk(subscribe))
             .lift(new RecordIOOperator())
             .observeOn(Schedulers.computation()) // TODO: Figure out how to move this before the lift
             /* Begin temporary back-pressure */
@@ -133,18 +115,20 @@ public final class MesosSchedulerClient<Send, Receive> {
             .flatMap(Observable::from)
             /* end temporary back-pressure */
             .map(receiveCodec::decode)
-            .doOnNext(event -> LOGGER.trace("Observed Event: {}", receiveCodec.show(event)))
-            .doOnError(t -> LOGGER.warn("doOnError", t))
             ;
-    }
 
-    @NotNull
-    public Subscription sink(@NotNull final Observable<SinkOperation<Send>> spout) {
+        final Observable<SinkOperation<Send>> sends = streamProcessor.apply(receives)
+            .filter(Optional::isPresent)
+            .map(Optional::get);
+
         final Subscriber<SinkOperation<Send>> subscriber = new SinkSubscriber<>(httpClient, createPost);
-        return spout
+        final SubscriberDecorator<SinkOperation<Send>> decorator = new SubscriberDecorator<>(subscriber);
+        final Subscription subscription = sends
             .subscribeOn(Rx.compute())
             .observeOn(Rx.compute())
-            .subscribe(subscriber);
+            .subscribe(decorator);
+
+        return new ObservableAwaitableSubscription(Observable.from(exec.submit(decorator)), subscription);
     }
 
     @NotNull
@@ -185,4 +169,131 @@ public final class MesosSchedulerClient<Send, Receive> {
         };
     }
 
+    /**
+     * Turns an Observable into an AwaitableSubscription
+     */
+    private static final class ObservableAwaitableSubscription implements AwaitableSubscription {
+        @NotNull
+        private final Observable<Optional<Throwable>> observable;
+        @NotNull
+        private final Subscription subscription;
+
+        public ObservableAwaitableSubscription(
+            @NotNull final Observable<Optional<Throwable>> observable,
+            @NotNull final Subscription subscription
+        ) {
+            this.observable = observable;
+            this.subscription = subscription;
+        }
+
+        @Override
+        public void await() throws Throwable {
+            final Optional<Throwable> last = observable.toBlocking().last();
+            subscription.unsubscribe();
+            if (last.isPresent()) {
+                throw last.get();
+            }
+        }
+
+        @Override
+        public void unsubscribe() {
+            subscription.unsubscribe();
+        }
+
+        @Override
+        public boolean isUnsubscribed() {
+            return subscription.isUnsubscribed();
+        }
+    }
+
+    /**
+     * Decorator for {@link Subscriber} that will keep track of "complete"ness and when complete will put an
+     * item onto a blocking queue. {@link Callable#call()} will then block until there is an item on the queue.
+     * If the item in the queue contains and exception, that exception will be throw back up to the user.
+     */
+    @VisibleForTesting
+    static final class SubscriberDecorator<T> extends Subscriber<T> implements Callable<Optional<Throwable>> {
+        @NotNull
+        private final Subscriber<T> delegate;
+
+        @NotNull
+        private final BlockingQueue<Optional<Throwable>> queue;
+
+        public SubscriberDecorator(@NotNull final Subscriber<T> delegate) {
+            this.delegate = delegate;
+            queue = new LinkedBlockingDeque<>();
+        }
+
+        /**
+         * Returns the first item from the queue that marks the end of the stream.
+         * If an exception happens when {@link Subscriber#onError(Throwable)} or {@link Subscriber#onCompleted()} is
+         * called for {@code delegate} the exception from that method invocation will be the item returned.
+         * @return The item that ended the stream.
+         * @throws InterruptedException if waiting on the stream to end is interrupted.
+         */
+        @Override
+        public Optional<Throwable> call() throws InterruptedException {
+            return queue.take();
+        }
+
+        @Override
+        public void onNext(final T t) {
+            try {
+                delegate.onNext(t);
+            } catch (Exception e) {
+                onError(e);
+            }
+        }
+
+        @Override
+        public void onError(final Throwable e) {
+            Exceptions.throwIfFatal(e);
+            try {
+                delegate.onError(e);
+                queue.offer(Optional.of(e));
+            } catch (Exception e1) {
+                queue.offer(Optional.of(e1));
+            }
+        }
+
+        @Override
+        public void onCompleted() {
+            try {
+                delegate.onCompleted();
+                queue.offer(Optional.empty());
+            } catch (Exception e) {
+                queue.offer(Optional.of(e));
+            }
+        }
+    }
+
+    @NotNull
+    @VisibleForTesting
+    static <Send, Receive> Func1<Send, Observable<HttpClientRequest<ByteBuf>>> curryCreatePost(
+        @NotNull final URI mesosUri,
+        @NotNull final MessageCodec<Send> sendCodec,
+        @NotNull final MessageCodec<Receive> receiveCodec,
+        @NotNull final UserAgent userAgent
+    ) {
+        return (Send s) -> {
+            final byte[] bytes = sendCodec.encode(s);
+            HttpClientRequest<ByteBuf> request = HttpClientRequest.createPost(mesosUri.getPath())
+                .withHeader("User-Agent", userAgent.toString())
+                .withHeader("Content-Type", sendCodec.mediaType())
+                .withHeader("Accept", receiveCodec.mediaType());
+
+            final String userInfo = mesosUri.getUserInfo();
+            if (userInfo != null) {
+                //Won't actually work until https://issues.apache.org/jira/browse/MESOS-3923 is fixed
+                request = request.withHeader(
+                    HttpHeaders.AUTHORIZATION,
+                    String.format("Basic %s", Base64.getEncoder().encodeToString(userInfo.getBytes()))
+                );
+            }
+            return just(
+                request
+                    .withContent(bytes)
+            );
+        };
+    }
 }

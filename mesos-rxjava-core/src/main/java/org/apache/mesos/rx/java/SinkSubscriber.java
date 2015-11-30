@@ -29,7 +29,6 @@ final class SinkSubscriber<Send> extends Subscriber<SinkOperation<Send>> {
         @NotNull final HttpClient<ByteBuf, ByteBuf> httpClient,
         @NotNull final Func1<Send, Observable<HttpClientRequest<ByteBuf>>> createPost
     ) {
-        LOGGER.debug("SinkSubscriber(httpClient : {}, createPost : {})", httpClient, createPost);
         this.httpClient = httpClient;
         this.createPost = createPost;
     }
@@ -80,11 +79,10 @@ final class SinkSubscriber<Send> extends Subscriber<SinkOperation<Send>> {
 
     @Override
     public void onError(final Throwable e) {
-        LOGGER.debug("onError(e : {})", e.getMessage());
+        Exceptions.throwIfFatal(e);
     }
 
     @Override
     public void onCompleted() {
-        LOGGER.debug("onCompleted()");
     }
 }
