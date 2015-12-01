@@ -1,5 +1,5 @@
 <!--
-  ~    Copyright (C) 2015 Apache Software Foundation (ASF)
+  ~    Copyright (C) 2015 Mesosphere, Inc
   ~
   ~ Licensed under the Apache License, Version 2.0 (the "License");
   ~ you may not use this file except in compliance with the License.
@@ -25,8 +25,8 @@
         </encoder>
     </appender>
 
-    <logger name="org.apache.mesos.rx.java" level="debug"/>
-    <!--<logger name="org.apache.mesos.rx.java.example.framework.sleepy.State" level="debug"/>-->
+    <logger name="com.mesosphere.mesos.rx.java" level="debug"/>
+    <!--<logger name="com.mesosphere.mesos.rx.java.example.framework.sleepy.State" level="debug"/>-->
     <logger name="io.netty.handler.logging.LoggingHandler" level="info"/>
 
     <root level="info">

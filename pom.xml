@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  ~    Copyright (C) 2015 Apache Software Foundation (ASF)
+  ~    Copyright (C) 2015 Mesosphere, Inc
   ~
   ~ Licensed under the Apache License, Version 2.0 (the "License");
   ~ you may not use this file except in compliance with the License.
@@ -19,12 +19,12 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>org.apache.mesos.rx.java</groupId>
+    <groupId>com.mesosphere.mesos.rx.java</groupId>
     <artifactId>mesos-rxjava</artifactId>
     <version>0.1.0-SNAPSHOT</version>
     <packaging>pom</packaging>
 
-    <name>Apache Mesos RxJava Client</name>
+    <name>Mesos RxJava Client</name>
     <url>https://github.com/mesos/mesos-rxjava</url>
 
     <description>
@@ -40,8 +40,8 @@
         </license>
     </licenses>
     <organization>
-        <name>The Apache Mesos Community</name>
-        <url>https://github.com/mesos</url>
+        <name>Mesosphere, Inc</name>
+        <url>https://mesosphere.com/</url>
     </organization>
 
     <developers>
@@ -51,9 +51,9 @@
     </developers>
 
     <scm>
-        <connection>scm:git:https://github.com/mesos/mesos-rxjava.git</connection>
-        <developerConnection>scm:git:https://github.com/mesos/mesos-rxjava.git</developerConnection>
-        <url>https://github.com/mesos/mesos-rxjava</url>
+        <connection>scm:git:https://github.com/mesosphere/mesos-rxjava.git</connection>
+        <developerConnection>scm:git:https://github.com/mesosphere/mesos-rxjava.git</developerConnection>
+        <url>https://github.com/mesosphere/mesos-rxjava</url>
     </scm>
     <issueManagement>
         <system>Github</system>
@@ -104,17 +104,17 @@
 
             <!-- project libraries -->
             <dependency>
-                <groupId>org.apache.mesos.rx.java</groupId>
+                <groupId>com.mesosphere.mesos.rx.java</groupId>
                 <artifactId>mesos-rxjava-core</artifactId>
                 <version>0.1.0-SNAPSHOT</version>
             </dependency>
             <dependency>
-                <groupId>org.apache.mesos.rx.java</groupId>
+                <groupId>com.mesosphere.mesos.rx.java</groupId>
                 <artifactId>mesos-rxjava-recordio</artifactId>
                 <version>0.1.0-SNAPSHOT</version>
             </dependency>
             <dependency>
-                <groupId>org.apache.mesos.rx.java</groupId>
+                <groupId>com.mesosphere.mesos.rx.java</groupId>
                 <artifactId>mesos-rxjava-test</artifactId>
                 <version>0.1.0-SNAPSHOT</version>
                 <scope>test</scope>
