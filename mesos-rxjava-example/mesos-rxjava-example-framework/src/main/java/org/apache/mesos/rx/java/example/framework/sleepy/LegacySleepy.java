@@ -12,10 +12,12 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
+ *
  */
 
-package org.apache.mesos.rx.java.example.framework.sleepy.libmesos;
+package org.apache.mesos.rx.java.example.framework.sleepy;
 
+import org.apache.mesos.MesosSchedulerDriver;
 import org.apache.mesos.Protos;
 import org.apache.mesos.Scheduler;
 import org.apache.mesos.SchedulerDriver;
@@ -26,45 +28,82 @@ import org.slf4j.LoggerFactory;
 
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.Optional;
+import java.util.UUID;
 
 import static com.google.common.collect.Lists.newArrayList;
 import static java.util.stream.Collectors.groupingBy;
 import static org.apache.mesos.Protos.*;
 
-public final class LegacyScheduler implements Scheduler {
-    private static final Logger LOGGER = LoggerFactory.getLogger(LegacyScheduler.class);
+/**
+ * A relatively simple Mesos framework that launches {@code sleep $SLEEP_SECONDS} tasks for offers it receives.
+ * This framework uses the legacy libmesos API.
+ */
+public final class LegacySleepy implements Scheduler {
+    private static final Logger LOGGER = LoggerFactory.getLogger(LegacySleepy.class);
 
-    private static final AtomicInteger counter = new AtomicInteger();
-    private static final double CPUS = 8.0 / 200.0;
-    public static final int MEM = 32;
+    /**
+     * <pre><code>
+     * Usage: java -cp &lt;application-jar> org.apache.mesos.rx.java.example.framework.sleepy.LegacySleepy &lt;mesos-zk-uri> &lt;cpus-per-task>
+     * mesos-zk-uri     The fully qualified URI to the Mesos Master. (zk://localhost:2181/mesos)
+     * cpus-per-task    The number of CPUs each task should claim from an offer.
+     * </code></pre>
+     * @param args    Application arguments mesos-uri and cpus-per-task.
+     */
+    public static void main(String[] args) {
+        try {
+            if (args.length != 2) {
+                final String className = Sleepy.class.getCanonicalName();
+                System.err.println("Usage: java -cp <application-jar> " + className + " <mesos-zk-uri> <cpus-per-task>");
+            }
 
-    private FrameworkID frameworkId;
+            final String mesosUri = args[0];
+            final double cpusPerTask = Double.parseDouble(args[1]);
+            final FrameworkID fwId = FrameworkID.newBuilder().setValue("legacy-sleepy-" + UUID.randomUUID()).build();
+            final State<FrameworkID, TaskID, TaskState> state = new State<>(fwId, cpusPerTask, 32);
+
+            final Scheduler scheduler = new LegacySleepy(state);
+            final FrameworkInfo frameworkInfo = FrameworkInfo.newBuilder()
+                .setUser("")
+                .setName("legacy-sleepy")
+                .setFailoverTimeout(0)
+                .build();
+
+            final MesosSchedulerDriver driver = new MesosSchedulerDriver(scheduler, frameworkInfo, mesosUri);
+
+            driver.run();
+        } catch (Throwable e) {
+            LOGGER.error("Unhandled exception caught at main", e);
+            System.exit(1);
+        }
+    }
+
+    @NotNull
+    private final State<FrameworkID, TaskID, TaskState> state;
+
+    public LegacySleepy(@NotNull final State<FrameworkID, TaskID, TaskState> state) {
+        this.state = state;
+    }
 
     @Override
     public void registered(final SchedulerDriver driver, final FrameworkID frameworkId, final MasterInfo masterInfo) {
-        LOGGER.info(
-            "registered(driver : {}, frameworkId : {}, masterInfo : {})",
-            driver,
-            ProtoUtils.protoToString(frameworkId),
-            ProtoUtils.protoToString(masterInfo)
-        );
-        this.frameworkId = frameworkId;
     }
 
     @Override
     public void reregistered(final SchedulerDriver driver, final MasterInfo masterInfo) {
-        LOGGER.trace("reregistered(driver : {}, masterInfo : {})", driver, masterInfo);
     }
 
     @Override
     public void resourceOffers(final SchedulerDriver driver, final List<Protos.Offer> offers) {
-//        LOGGER.trace("resourceOffers(driver : {}, offers : {})", driver, offers);
         offers.stream()
             .forEach((Offer offer) -> {
-                final OfferID offerId = offer.getId();
+                final int offerCount = state.getOfferCounter().incrementAndGet();
+
                 final SlaveID slaveId = offer.getSlaveId();
-                final Map<String, List<org.apache.mesos.Protos.Resource>> resources = offer.getResourcesList()
+                final OfferID offerId = offer.getId();
+                final List<OfferID> ids = newArrayList(offer.getId());
+
+                final Map<String, List<Resource>> resources = offer.getResourcesList()
                     .stream()
                     .collect(groupingBy(Resource::getName));
                 final List<Resource> cpuList = resources.get("cpus");
@@ -76,14 +115,15 @@ public final class LegacyScheduler implements Scheduler {
 
                     double availableCpu = cpus.getScalar().getValue();
                     double availableMem = mem.getScalar().getValue();
-                    while (availableCpu >= CPUS && availableMem >= MEM) {
-                        availableCpu -= CPUS;
-                        availableMem -= MEM;
-                        tasks.add(sleepTask(slaveId));
+                    final double cpusPerTask = state.getCpusPerTask();
+                    final double memMbPerTask = state.getMemMbPerTask();
+                    while (availableCpu >= cpusPerTask && availableMem >= memMbPerTask) {
+                        availableCpu -= cpusPerTask;
+                        availableMem -= memMbPerTask;
+                        final String taskId = String.format("task-%d-%d", offerCount, state.getTotalTaskCounter().incrementAndGet());
+                        tasks.add(sleepTask(slaveId, taskId, cpusPerTask, memMbPerTask));
                     }
 
-
-                    final List<OfferID> ids = newArrayList(offerId);
                     if (!tasks.isEmpty()) {
                         LOGGER.info("Launching {} tasks", tasks.size());
                         driver.launchTasks(ids, tasks);
@@ -98,42 +138,39 @@ public final class LegacyScheduler implements Scheduler {
 
     @Override
     public void offerRescinded(final SchedulerDriver driver, final OfferID offerId) {
-        LOGGER.trace("offerRescinded(driver : {}, offerId : {})", driver, offerId);
     }
 
     @Override
     public void statusUpdate(final SchedulerDriver driver, final TaskStatus status) {
-        LOGGER.trace("statusUpdate(driver : {}, status : {})", driver, status);
+        if (status.getState() == TaskState.TASK_ERROR) {
+            LOGGER.warn("Task Error: {}", ProtoUtils.protoToString(status));
+        }
+        state.put(status.getTaskId(), status.getState());
     }
 
     @Override
     public void frameworkMessage(final SchedulerDriver driver, final ExecutorID executorId, final SlaveID slaveId, final byte[] data) {
-        LOGGER.trace("frameworkMessage(driver : {}, executorId : {}, slaveId : {}, data : {})", driver, executorId, slaveId, data);
     }
 
     @Override
     public void disconnected(final SchedulerDriver driver) {
-        LOGGER.trace("disconnected(driver : {})", driver);
     }
 
     @Override
     public void slaveLost(final SchedulerDriver driver, final SlaveID slaveId) {
-        LOGGER.trace("slaveLost(driver : {}, slaveId : {})", driver, slaveId);
     }
 
     @Override
     public void executorLost(final SchedulerDriver driver, final ExecutorID executorId, final SlaveID slaveId, final int status) {
-        LOGGER.trace("executorLost(driver : {}, executorId : {}, slaveId : {}, status : {})", driver, executorId, slaveId, status);
     }
 
     @Override
     public void error(final SchedulerDriver driver, final String message) {
-        LOGGER.trace("error(driver : {}, message : {})", driver, message);
     }
 
     @NotNull
-    private static TaskInfo sleepTask(@NotNull final SlaveID slaveId) {
-        final String taskId = String.format("task-%d", counter.incrementAndGet());
+    private static TaskInfo sleepTask(@NotNull final SlaveID slaveId, @NotNull final String taskId, final double cpus, final double mem) {
+        final String sleepSeconds = Optional.ofNullable(System.getenv("SLEEP_SECONDS")).orElse("15");
         return TaskInfo.newBuilder()
             .setName(taskId)
             .setTaskId(
@@ -146,7 +183,7 @@ public final class LegacyScheduler implements Scheduler {
                     .setEnvironment(Environment.newBuilder()
                         .addVariables(
                             Environment.Variable.newBuilder()
-                                .setName("SLEEP_SECONDS").setValue("60")
+                                .setName("SLEEP_SECONDS").setValue(sleepSeconds)
                         ))
                     .setValue("env | sort && sleep $SLEEP_SECONDS")
             )
@@ -154,13 +191,14 @@ public final class LegacyScheduler implements Scheduler {
                 .setName("cpus")
                 .setRole("*")
                 .setType(Value.Type.SCALAR)
-                .setScalar(Value.Scalar.newBuilder().setValue(CPUS)))
+                .setScalar(Value.Scalar.newBuilder().setValue(cpus)))
             .addResources(Resource.newBuilder()
                 .setName("mem")
                 .setRole("*")
                 .setType(Value.Type.SCALAR)
-                .setScalar(Value.Scalar.newBuilder().setValue(MEM)))
+                .setScalar(Value.Scalar.newBuilder().setValue(mem)))
             .build();
     }
+
 
 }

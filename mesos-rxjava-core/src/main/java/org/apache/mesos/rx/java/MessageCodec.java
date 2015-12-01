@@ -33,7 +33,7 @@ public interface MessageCodec<T> {
     T decode(@NotNull final byte[] bytes);
 
     /**
-     * Returns the <a href="https://en.wikipedia.org/wiki/Media_type">IANA media type</a> of the serialized message
+     * Returns the <a target="_blank" href="https://en.wikipedia.org/wiki/Media_type">IANA media type</a> of the serialized message
      * format handled by this object.
      * <p>
      * The value returned by this method will be used in the {@code Content-Type} and {@code Accept} headers for

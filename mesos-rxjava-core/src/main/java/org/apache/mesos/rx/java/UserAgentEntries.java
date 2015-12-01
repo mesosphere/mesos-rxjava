@@ -10,6 +10,9 @@ import java.io.InputStream;
 import java.util.Properties;
 import java.util.function.Function;
 
+/**
+ * A set of utility methods that can be used to easily create {@link UserAgentEntry} objects.
+ */
 public final class UserAgentEntries {
     public static final Logger LOGGER = LoggerFactory.getLogger(UserAgent.class);
 

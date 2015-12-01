@@ -22,7 +22,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
- * A utility class that can used to create a proxy between mesos and your client,
+ * A utility class that can used to create a proxy between Mesos and your client,
  * and then close the connection to verify behavior.
  */
 public final class TcpSocketProxy implements Closeable {

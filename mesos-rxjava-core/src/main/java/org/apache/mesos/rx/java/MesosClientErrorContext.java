@@ -6,6 +6,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
+/**
+ * This class represents the context of a request that is made to Mesos that resulted in an error.
+ * Including the status code of the HTTP Request, response headers and content body message if
+ * present in the response.
+ */
 public final class MesosClientErrorContext {
     private static final Joiner MAP_JOINER = Joiner.on(",").skipNulls();
 
@@ -19,14 +24,23 @@ public final class MesosClientErrorContext {
         this.headers = headers;
     }
 
+    /**
+     * @return The statusCode from the HTTP response
+     */
     public int getStatusCode() {
         return statusCode;
     }
 
+    /**
+     * @return The content body message if present in the response
+     */
     public String getMessage() {
         return message;
     }
 
+    /**
+     * @return The headers returned in the HTTP response
+     */
     public List<Map.Entry<String, String>> getHeaders() {
         return headers;
     }
