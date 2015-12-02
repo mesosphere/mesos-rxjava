@@ -18,7 +18,7 @@
  * coming from Apache Mesos.
  *
  * The following is a full Apache Mesos Framework that declines all resource offers:
- * <pre><code>
+ * <pre>{@code
  * import static org.apache.mesos.v1.Protos.*;
  * import static org.apache.mesos.v1.scheduler.Protos.*;
  *
@@ -61,6 +61,6 @@
  *     .build()
  *     .openStream()
  *     .await();
- * </code></pre>
+ * }</pre>
  */
 package com.mesosphere.mesos.rx.java;

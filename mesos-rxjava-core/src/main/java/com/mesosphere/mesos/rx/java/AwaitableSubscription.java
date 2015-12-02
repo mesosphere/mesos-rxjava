@@ -22,7 +22,7 @@ import rx.Subscription;
 /**
  * A sub-interface of {@link Subscription} that provides the definition of a subscription that can be
  * awaited.
- * <p/>
+ * <p>
  * This is useful for an application that wants to start up an event stream and block its main thread
  * until the event stream has completed.
  */
@@ -33,6 +33,7 @@ public interface AwaitableSubscription extends Subscription {
      * If the {@code rx.Observable} ends due to  {@link Subscriber#onError(Throwable) onError} the {@code Throwable}
      * delivered to {@code onError} will be rethrown. If the {@code rx.Observable} ends by
      * {@link Subscriber#onCompleted() onCompleted} the method will complete cleanly.
+     * @throws Throwable If the stream terminates due to any Throwable, it will be re-thrown from this method
      */
     void await() throws Throwable;
 

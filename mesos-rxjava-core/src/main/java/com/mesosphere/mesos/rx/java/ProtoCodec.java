@@ -31,7 +31,7 @@ public final class ProtoCodec<T extends Message> implements MessageCodec<T> {
     private final Parser<T> parser;
 
     /**
-     * Instantiates a {@link ProtoCodec} instance that deserializes messages with the given
+     * Instantiates a ProtoCodec instance that deserializes messages with the given
      * {@link com.mesosphere.mesos.rx.java.ProtoCodec.Parser}.
      * <p>
      * The specific parser that is provided defines which protobuf message class this codec is for. For example,
@@ -44,20 +44,12 @@ public final class ProtoCodec<T extends Message> implements MessageCodec<T> {
         this.parser = parser;
     }
 
-    /**
-     * @inheritDoc
-     */
     @NotNull
     @Override
     public byte[] encode(@NotNull final T message) {
         return message.toByteArray();
     }
 
-    /**
-     * @inheritDoc
-     *
-     * @throws RuntimeException if an error occurs when parsing the protobuf
-     */
     @NotNull
     @Override
     public T decode(@NotNull byte[] bytes) {
@@ -68,18 +60,12 @@ public final class ProtoCodec<T extends Message> implements MessageCodec<T> {
         }
     }
 
-    /**
-     * @inheritDoc
-     */
     @NotNull
     @Override
     public String mediaType() {
         return "application/x-protobuf";
     }
 
-    /**
-     * @inheritDoc
-     */
     @NotNull
     @Override
     public String show(@NotNull final T message) {

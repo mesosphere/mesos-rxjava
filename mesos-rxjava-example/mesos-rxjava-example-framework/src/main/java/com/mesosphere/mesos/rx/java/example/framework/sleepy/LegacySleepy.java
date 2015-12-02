@@ -42,11 +42,11 @@ public final class LegacySleepy implements Scheduler {
     private static final Logger LOGGER = LoggerFactory.getLogger(LegacySleepy.class);
 
     /**
-     * <pre><code>
-     * Usage: java -cp &lt;application-jar> com.mesosphere.mesos.rx.java.example.framework.sleepy.LegacySleepy &lt;mesos-zk-uri> &lt;cpus-per-task>
+     * <pre>{@code
+     * Usage: java -cp <application-jar> com.mesosphere.mesos.rx.java.example.framework.sleepy.LegacySleepy <mesos-zk-uri> <cpus-per-task>
      * mesos-zk-uri     The fully qualified URI to the Mesos Master. (zk://localhost:2181/mesos)
      * cpus-per-task    The number of CPUs each task should claim from an offer.
-     * </code></pre>
+     * }</pre>
      * @param args    Application arguments mesos-uri and cpus-per-task.
      */
     public static void main(String[] args) {
