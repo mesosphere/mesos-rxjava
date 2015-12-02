@@ -44,6 +44,8 @@ public interface MessageCodec<T> {
      *
      * @param bytes the bytes to deserialize
      * @return the deserialized message
+     * @throws RuntimeException If an error occurs when decoding {@code bytes}. If a checked exception is possible
+     *                          it should be wrapped in a RuntimeException.
      */
     @NotNull
     T decode(@NotNull final byte[] bytes);

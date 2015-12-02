@@ -16,7 +16,7 @@
 
 /**
  * This package contains an example Mesos Framework built on the Mesos RxJava Client.
- * <p/>
+ * <p>
  * The framework defined in this package is pretty rudimentary but does illustrate how to use Mesos RxJava, and some
  * of the best practices that should be employed when creating a framework.
  */

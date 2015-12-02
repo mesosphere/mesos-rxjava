@@ -27,7 +27,7 @@ import static com.google.common.base.Preconditions.checkNotNull;
 
 /**
  * Builder used to create a {@link MesosSchedulerClient}.
- * <p/>
+ * <p>
  * PLEASE NOTE: All methods in this class function as "set" rather than "copy with new value"
  * @param <Send>       The type of objects that will be sent to Mesos
  * @param <Receive>    The type of objects are expected from Mesos
@@ -44,10 +44,10 @@ public final class MesosSchedulerClientBuilder<Send, Receive> {
     private MesosSchedulerClientBuilder() {}
 
     /**
-     * Create a new instance of {@link MesosSchedulerClientBuilder}
+     * Create a new instance of MesosSchedulerClientBuilder
      * @param <Send>       The type of objects that will be sent to Mesos
      * @param <Receive>    The type of objects are expected from Mesos
-     * @return A new instance of {@link MesosSchedulerClientBuilder}
+     * @return A new instance of MesosSchedulerClientBuilder
      */
     @NotNull
     public static <Send, Receive> MesosSchedulerClientBuilder<Send, Receive> newBuilder() {
@@ -130,25 +130,25 @@ public final class MesosSchedulerClientBuilder<Send, Receive> {
 
     /**
      * This method provides the means for a user to define how the event stream will be processed.
-     * <p/>
+     * <p>
      * The function passed to this method will function as the actual event processing code for the user.
-     * <p/>
+     * <p>
      * The stream the users will source from is an {@link Observable} of {@code Receive}s. With this stream
      * source a number of functions can be applied to transform/interact/evaluate the stream.
-     * <p/>
+     * <p>
      * The output of this function represents the users reaction to each event represented as an
      * {@code Observable<Optional<SinkOperation<Send>>>}. If {@link Optional#isPresent()} the specified
      * {@link SinkOperation} will be processed.
-     * <p/>
+     * <p>
      * For example, if you wanted to log all tasks that result in error:
-     * <pre><code>
+     * <pre>{@code
      * events -> {
-     *     final Observable&lt;Optional&lt;SinkOperation&lt;Call>>> errorLogger = events
+     *     final Observable<Optional<SinkOperation<Call>>> errorLogger = events
      *         .filter(event -> event.getType() == Event.Type.UPDATE && event.getUpdate().getStatus().getState() == TaskState.TASK_ERROR)
      *         .doOnNext(e -> LOGGER.warn("Task Error: {}", ProtoUtils.protoToString(e)))
      *         .map(e -> Optional.empty());
      * }
-     * </code></pre>
+     * }</pre>
      * @param streamProcessing    The function that will be woven between the event spout and the call sink
      * @return this builder (allowing for further chained calls)
      */

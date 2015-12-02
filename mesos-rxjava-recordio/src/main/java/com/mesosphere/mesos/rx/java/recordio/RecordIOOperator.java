@@ -41,9 +41,6 @@ import static com.google.common.collect.Lists.newArrayList;
  */
 public final class RecordIOOperator implements Operator<byte[], ByteBuf> {
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
     public Subscriber<ByteBuf> call(final Subscriber<? super byte[]> subscriber) {
         return new RecordIOSubscriber(subscriber);

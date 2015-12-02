@@ -27,15 +27,15 @@ import static com.google.common.base.Preconditions.checkNotNull;
  * to Mesos.  The current implementation of Mesos is such that any call to its HTTP API with a
  * {@link org.apache.mesos.v1.scheduler.Protos.Call} that isn't a
  * {@link org.apache.mesos.v1.scheduler.Protos.Call.Type#SUBSCRIBE} will result in a semi-blocking response.
- * <p/>
+ * <p>
  * This means things like request validation (including body deserialization and field validation) are
  * performed synchronously during the request. Due to this behavior, this class exists to inform the
  * user of the success or failure of requests sent to the master.
- * <p/>
+ * <p>
  * It should be noted that this object doesn't represent the means of detecting and handling connection errors
  * with Mesos as the intent is that it will be communicated to the whole event stream rather than an
  * individual {@link org.apache.mesos.v1.scheduler.Protos.Call}.
- * <p/>
+ * <p>
  * <i>NOTE</i>
  * The semantics of which thread a callback will be invoked on are undefined and should not be relied upon.
  * This means that all standard thread safety/guards should be in place for state changes that take place

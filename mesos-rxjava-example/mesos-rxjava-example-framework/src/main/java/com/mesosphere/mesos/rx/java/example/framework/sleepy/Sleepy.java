@@ -47,11 +47,11 @@ public final class Sleepy {
     private static final Logger LOGGER = LoggerFactory.getLogger(Sleepy.class);
 
     /**
-     * <pre><code>
-     * Usage: java -cp &lt;application-jar> com.mesosphere.mesos.rx.java.example.framework.sleepy.Sleepy &lt;mesos-uri> &lt;cpus-per-task>
+     * <pre>{@code
+     * Usage: java -cp <application-jar> com.mesosphere.mesos.rx.java.example.framework.sleepy.Sleepy <mesos-uri> <cpus-per-task>
      * mesos-uri        The fully qualified URI to the Mesos Master. (http://localhost:5050/api/v1/scheduler)
      * cpus-per-task    The number of CPUs each task should claim from an offer.
-     * </code></pre>
+     * }</pre>
      * @param args    Application arguments mesos-uri and cpus-per-task.
      */
     public static void main(final String[] args) {

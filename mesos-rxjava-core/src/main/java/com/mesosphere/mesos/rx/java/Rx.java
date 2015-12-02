@@ -29,7 +29,7 @@ public final class Rx {
 
     /**
      * This method will return the {@link Scheduler} that is used for all "computation" workloads.
-     * <p/>
+     * <p>
      * The idea of a computation workload is one that is CPU bound.
      * @return The {@link Scheduler} that is to be used for all CPU bound workloads.
      */
@@ -40,7 +40,7 @@ public final class Rx {
 
     /**
      * This method will return the {@link Scheduler} that is used for all "io" workloads.
-     * <p/>
+     * <p>
      * The idea of a io workload is one that is IO bound (disk, network, etc.).
      * @return The {@link Scheduler} that is to be used for all IO bound workloads.
      */
