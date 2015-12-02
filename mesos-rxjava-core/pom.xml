@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  ~    Copyright (C) 2015 Apache Software Foundation (ASF)
+  ~    Copyright (C) 2015 Mesosphere, Inc
   ~
   ~ Licensed under the Apache License, Version 2.0 (the "License");
   ~ you may not use this file except in compliance with the License.
@@ -20,14 +20,14 @@
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
-        <groupId>org.apache.mesos.rx.java</groupId>
+        <groupId>com.mesosphere.mesos.rx.java</groupId>
         <artifactId>mesos-rxjava</artifactId>
         <version>0.1.0-SNAPSHOT</version>
     </parent>
 
     <artifactId>mesos-rxjava-core</artifactId>
 
-    <name>Apache Mesos RxJava Client :: Core</name>
+    <name>Mesos RxJava Client :: Core</name>
 
     <properties>
         <module.deploy.skip>false</module.deploy.skip>
@@ -35,11 +35,11 @@
 
     <dependencies>
         <dependency>
-            <groupId>org.apache.mesos.rx.java</groupId>
+            <groupId>com.mesosphere.mesos.rx.java</groupId>
             <artifactId>mesos-rxjava-recordio</artifactId>
         </dependency>
         <dependency>
-            <groupId>org.apache.mesos.rx.java</groupId>
+            <groupId>com.mesosphere.mesos.rx.java</groupId>
             <artifactId>mesos-rxjava-test</artifactId>
         </dependency>
         <dependency>
