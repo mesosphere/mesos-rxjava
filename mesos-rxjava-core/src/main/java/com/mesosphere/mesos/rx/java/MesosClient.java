@@ -51,11 +51,11 @@ import static rx.Observable.just;
  * <a target="_blank" href="https://github.com/apache/mesos/blob/master/docs/scheduler-http-api.md">HTTP Scheduler API</a>
  * @param <Send>       The type of Objects to be sent to Mesos
  * @param <Receive>    The type of Objects to expect from Mesos
- * @see MesosSchedulerClientBuilder
- * @see MesosSchedulerClientBuilders
+ * @see MesosClientBuilder
+ * @see MesosClientBuilders
  */
-public final class MesosSchedulerClient<Send, Receive> {
-    private static final Logger LOGGER = LoggerFactory.getLogger(MesosSchedulerClient.class);
+public final class MesosClient<Send, Receive> {
+    private static final Logger LOGGER = LoggerFactory.getLogger(MesosClient.class);
 
     @NotNull
     private final ExecutorService exec = Executors.newSingleThreadExecutor(r -> new Thread(r, "stream-monitor-thread"));
@@ -75,7 +75,7 @@ public final class MesosSchedulerClient<Send, Receive> {
     @VisibleForTesting
     final Func1<Send, Observable<HttpClientRequest<ByteBuf>>> createPost;
 
-    MesosSchedulerClient(
+    MesosClient(
         @NotNull final URI mesosUri,
         @NotNull final Function<Class<?>, UserAgentEntry> applicationUserAgentEntry,
         @NotNull final MessageCodec<Send> sendCodec,

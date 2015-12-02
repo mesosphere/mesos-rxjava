@@ -34,7 +34,7 @@ public final class SubscriberDecoratorTest {
     @Test
     public void worksForCompleted() throws Exception {
         final TestSubscriber<String> testSubscriber = new TestSubscriber<>();
-        final MesosSchedulerClient.SubscriberDecorator<String> decorator = new MesosSchedulerClient.SubscriberDecorator<>(testSubscriber);
+        final MesosClient.SubscriberDecorator<String> decorator = new MesosClient.SubscriberDecorator<>(testSubscriber);
         Observable.just("something")
             .subscribe(decorator);
 
@@ -50,7 +50,7 @@ public final class SubscriberDecoratorTest {
     public void worksForError() throws Exception {
         final ExecutorService service = Executors.newSingleThreadExecutor();
         final TestSubscriber<String> testSubscriber = new TestSubscriber<>();
-        final MesosSchedulerClient.SubscriberDecorator<String> decorator = new MesosSchedulerClient.SubscriberDecorator<>(testSubscriber);
+        final MesosClient.SubscriberDecorator<String> decorator = new MesosClient.SubscriberDecorator<>(testSubscriber);
         Observable.<String>from(service.submit(() -> {throw new RuntimeException("kaboom");}))
             .subscribe(decorator);
 
@@ -67,7 +67,7 @@ public final class SubscriberDecoratorTest {
 
     @Test
     public void exceptionThrowByOnErrorIsReturned() throws Exception {
-        final MesosSchedulerClient.SubscriberDecorator<String> decorator = new MesosSchedulerClient.SubscriberDecorator<>(
+        final MesosClient.SubscriberDecorator<String> decorator = new MesosClient.SubscriberDecorator<>(
             Subscribers.<String>create(
                 s -> {throw new RuntimeException("Supposed to break");},
                 (t) -> {throw new RuntimeException("wrapped", t);}
@@ -86,7 +86,7 @@ public final class SubscriberDecoratorTest {
 
     @Test
     public void exceptionThrowByOnCompletedIsReturned() throws Exception {
-        final MesosSchedulerClient.SubscriberDecorator<String> decorator = new MesosSchedulerClient.SubscriberDecorator<>(
+        final MesosClient.SubscriberDecorator<String> decorator = new MesosClient.SubscriberDecorator<>(
             Subscribers.<String>create(
                 s -> {},
                 (t) -> {throw new RuntimeException("wrapped", t);},
@@ -106,7 +106,7 @@ public final class SubscriberDecoratorTest {
     @Test(expected = StackOverflowError.class)
     public void fatalExceptionIsThrown() throws Exception {
         final TestSubscriber<String> testSubscriber = new TestSubscriber<>();
-        final MesosSchedulerClient.SubscriberDecorator<String> decorator = new MesosSchedulerClient.SubscriberDecorator<>(testSubscriber);
+        final MesosClient.SubscriberDecorator<String> decorator = new MesosClient.SubscriberDecorator<>(testSubscriber);
         Observable.just("doesn't matter")
             .map((s) -> {
                 //noinspection ConstantIfStatement,ConstantConditions  -- This is here to trick the compiler to think this function returns a string
@@ -123,7 +123,7 @@ public final class SubscriberDecoratorTest {
     @Test
     public void onlyOneValueWillBeHeld_completed() throws Exception {
         final TestSubscriber<String> testSubscriber = new TestSubscriber<>();
-        final MesosSchedulerClient.SubscriberDecorator<String> decorator = new MesosSchedulerClient.SubscriberDecorator<>(testSubscriber);
+        final MesosClient.SubscriberDecorator<String> decorator = new MesosClient.SubscriberDecorator<>(testSubscriber);
 
         decorator.onCompleted();
         decorator.onCompleted();
@@ -135,7 +135,7 @@ public final class SubscriberDecoratorTest {
     @Test
     public void receiveFirstValue_error() throws Exception {
         final TestSubscriber<String> testSubscriber = new TestSubscriber<>();
-        final MesosSchedulerClient.SubscriberDecorator<String> decorator = new MesosSchedulerClient.SubscriberDecorator<>(testSubscriber);
+        final MesosClient.SubscriberDecorator<String> decorator = new MesosClient.SubscriberDecorator<>(testSubscriber);
 
         decorator.onError(new RuntimeException("this one"));
         decorator.onError(new RuntimeException("not this one"));
@@ -150,7 +150,7 @@ public final class SubscriberDecoratorTest {
     @Test
     public void onlyOneValueWillBeHeld_completedThenError() throws Exception {
         final TestSubscriber<String> testSubscriber = new TestSubscriber<>();
-        final MesosSchedulerClient.SubscriberDecorator<String> decorator = new MesosSchedulerClient.SubscriberDecorator<>(testSubscriber);
+        final MesosClient.SubscriberDecorator<String> decorator = new MesosClient.SubscriberDecorator<>(testSubscriber);
 
         decorator.onCompleted();
         decorator.onError(new RuntimeException("really doesn't matter"));

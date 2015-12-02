@@ -26,13 +26,13 @@ import java.util.function.Function;
 import static com.google.common.base.Preconditions.checkNotNull;
 
 /**
- * Builder used to create a {@link MesosSchedulerClient}.
+ * Builder used to create a {@link MesosClient}.
  * <p>
  * PLEASE NOTE: All methods in this class function as "set" rather than "copy with new value"
  * @param <Send>       The type of objects that will be sent to Mesos
  * @param <Receive>    The type of objects are expected from Mesos
  */
-public final class MesosSchedulerClientBuilder<Send, Receive> {
+public final class MesosClientBuilder<Send, Receive> {
 
     private URI mesosUri;
     private Function<Class<?>, UserAgentEntry> applicationUserAgentEntry;
@@ -41,17 +41,17 @@ public final class MesosSchedulerClientBuilder<Send, Receive> {
     private Send subscribe;
     private Function<Observable<Receive>, Observable<Optional<SinkOperation<Send>>>> streamProcessor;
 
-    private MesosSchedulerClientBuilder() {}
+    private MesosClientBuilder() {}
 
     /**
-     * Create a new instance of MesosSchedulerClientBuilder
+     * Create a new instance of MesosClientBuilder
      * @param <Send>       The type of objects that will be sent to Mesos
      * @param <Receive>    The type of objects are expected from Mesos
-     * @return A new instance of MesosSchedulerClientBuilder
+     * @return A new instance of MesosClientBuilder
      */
     @NotNull
-    public static <Send, Receive> MesosSchedulerClientBuilder<Send, Receive> newBuilder() {
-        return new MesosSchedulerClientBuilder<>();
+    public static <Send, Receive> MesosClientBuilder<Send, Receive> newBuilder() {
+        return new MesosClientBuilder<>();
     }
 
     /**
@@ -67,7 +67,7 @@ public final class MesosSchedulerClientBuilder<Send, Receive> {
      * @return this builder (allowing for further chained calls)
      */
     @NotNull
-    public MesosSchedulerClientBuilder<Send, Receive> mesosUri(
+    public MesosClientBuilder<Send, Receive> mesosUri(
         @NotNull final URI mesosUri
     ) {
         this.mesosUri = mesosUri;
@@ -81,7 +81,7 @@ public final class MesosSchedulerClientBuilder<Send, Receive> {
      * @return this builder (allowing for further chained calls)
      */
     @NotNull
-    public MesosSchedulerClientBuilder<Send, Receive> applicationUserAgentEntry(
+    public MesosClientBuilder<Send, Receive> applicationUserAgentEntry(
         @NotNull final Function<Class<?>, UserAgentEntry> applicationUserAgentEntry
     ) {
         this.applicationUserAgentEntry = applicationUserAgentEntry;
@@ -94,7 +94,7 @@ public final class MesosSchedulerClientBuilder<Send, Receive> {
      * @return this builder (allowing for further chained calls)
      */
     @NotNull
-    public MesosSchedulerClientBuilder<Send, Receive> sendCodec(
+    public MesosClientBuilder<Send, Receive> sendCodec(
         @NotNull final MessageCodec<Send> sendCodec
     ) {
         this.sendCodec = sendCodec;
@@ -107,7 +107,7 @@ public final class MesosSchedulerClientBuilder<Send, Receive> {
      * @return this builder (allowing for further chained calls)
      */
     @NotNull
-    public MesosSchedulerClientBuilder<Send, Receive> receiveCodec(
+    public MesosClientBuilder<Send, Receive> receiveCodec(
         @NotNull final MessageCodec<Receive> receiveCodec
     ) {
         this.receiveCodec = receiveCodec;
@@ -121,7 +121,7 @@ public final class MesosSchedulerClientBuilder<Send, Receive> {
      * @return this builder (allowing for further chained calls)
      */
     @NotNull
-    public MesosSchedulerClientBuilder<Send, Receive> subscribe(
+    public MesosClientBuilder<Send, Receive> subscribe(
         @NotNull final Send subscribe
     ) {
         this.subscribe = subscribe;
@@ -153,7 +153,7 @@ public final class MesosSchedulerClientBuilder<Send, Receive> {
      * @return this builder (allowing for further chained calls)
      */
     @NotNull
-    public MesosSchedulerClientBuilder<Send, Receive> processStream(
+    public MesosClientBuilder<Send, Receive> processStream(
         @NotNull final Function<Observable<Receive>, Observable<Optional<SinkOperation<Send>>>> streamProcessing
     ) {
         this.streamProcessor = streamProcessing;
@@ -161,13 +161,13 @@ public final class MesosSchedulerClientBuilder<Send, Receive> {
     }
 
     /**
-     * Builds the instance of {@link MesosSchedulerClient} that has been configured by this builder.
+     * Builds the instance of {@link MesosClient} that has been configured by this builder.
      * All items are expected to have non-null values, if any item is null an exception will be thrown.
-     * @return The configured {@link MesosSchedulerClient}
+     * @return The configured {@link MesosClient}
      */
     @NotNull
-    public final MesosSchedulerClient<Send, Receive> build() {
-        return new MesosSchedulerClient<>(
+    public final MesosClient<Send, Receive> build() {
+        return new MesosClient<>(
             checkNotNull(mesosUri),
             checkNotNull(applicationUserAgentEntry),
             checkNotNull(sendCodec),

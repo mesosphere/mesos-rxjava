@@ -36,7 +36,7 @@ import static com.mesosphere.mesos.rx.java.UserAgentEntries.*;
 import static org.apache.mesos.v1.Protos.*;
 import static org.assertj.core.api.Assertions.assertThat;
 
-public final class MesosSchedulerClientTest {
+public final class MesosClientTest {
 
     public static final Protos.Call ACK = ProtoUtils.ackUpdate(
         FrameworkID.newBuilder().setValue("fwId").build(),
@@ -48,7 +48,7 @@ public final class MesosSchedulerClientTest {
     @Test
     public void testUserAgentContains_MesosRxJavaCore_RxNetty() throws Exception {
         final String clientName = "unit-tests";
-        final MesosSchedulerClient<Protos.Call, Protos.Event> client = MesosSchedulerClientBuilders.usingProtos()
+        final MesosClient<Protos.Call, Protos.Event> client = MesosClientBuilders.schedulerUsingProtos()
             .mesosUri(URI.create("http://localhost:12345"))
             .applicationUserAgentEntry(literal(clientName, "latest"))
             .subscribe(TestingProtos.SUBSCRIBE)
@@ -85,7 +85,7 @@ public final class MesosSchedulerClientTest {
 
     @Test
     public void testRequestUriFromPassedUri() throws Exception {
-        final Func1<String, Observable<HttpClientRequest<ByteBuf>>> createPost = MesosSchedulerClient.curryCreatePost(
+        final Func1<String, Observable<HttpClientRequest<ByteBuf>>> createPost = MesosClient.curryCreatePost(
             URI.create("http://localhost:12345/glavin/api/v1/scheduler"),
             MessageCodecs.UTF8_STRING,
             MessageCodecs.UTF8_STRING,
@@ -103,7 +103,7 @@ public final class MesosSchedulerClientTest {
 
     @Test
     public void testBasicAuthHeaderAddedToRequestWhenUserInfoPresentInUri() throws Exception {
-        final Func1<String, Observable<HttpClientRequest<ByteBuf>>> createPost = MesosSchedulerClient.curryCreatePost(
+        final Func1<String, Observable<HttpClientRequest<ByteBuf>>> createPost = MesosClient.curryCreatePost(
             URI.create("http://testuser:testpassword@localhost:12345/api/v1/scheduler"),
             MessageCodecs.UTF8_STRING,
             MessageCodecs.UTF8_STRING,
