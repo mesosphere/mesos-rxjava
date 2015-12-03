@@ -23,7 +23,7 @@
  * import static org.apache.mesos.v1.scheduler.Protos.*;
  *
  * final Protos.FrameworkID fwId = FrameworkID.newBuilder().setValue(UUID.randomUUID().toString()).build();
- * com.mesosphere.mesos.rx.java.MesosSchedulerClientBuilders.usingProtos()
+ * com.mesosphere.mesos.rx.java.MesosClientBuilders.schedulerUsingProtos()
  *     .mesosUri(URI.create("http://localhost:5050/api/v1/scheduler"))
  *     .applicationUserAgentEntry(UserAgentEntries.literal("decline-framework", "0.1.0-SNAPSHOT"))
  *     .subscribe(

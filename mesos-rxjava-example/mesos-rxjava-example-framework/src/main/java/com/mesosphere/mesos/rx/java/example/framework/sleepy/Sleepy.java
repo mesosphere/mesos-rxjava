@@ -66,7 +66,7 @@ public final class Sleepy {
             final FrameworkID fwId = FrameworkID.newBuilder().setValue("sleepy-" + UUID.randomUUID()).build();
             final State<FrameworkID, TaskID, TaskState> state = new State<>(fwId, cpusPerTask, 32);
 
-            final MesosSchedulerClientBuilder<Call, Event> clientBuilder = MesosSchedulerClientBuilders.usingProtos()
+            final MesosClientBuilder<Call, Event> clientBuilder = MesosClientBuilders.schedulerUsingProtos()
                 .mesosUri(mesosUri)
                 .applicationUserAgentEntry(userAgentEntryForMavenArtifact("com.mesosphere.mesos.rx.java.example", "mesos-rxjava-example"));
 
@@ -79,7 +79,7 @@ public final class Sleepy {
 
     private static void _main(
         @NotNull final State<FrameworkID, TaskID, TaskState> stateObject,
-        @NotNull final MesosSchedulerClientBuilder<Call, Event> clientBuilder
+        @NotNull final MesosClientBuilder<Call, Event> clientBuilder
     ) throws Throwable {
 
         final Call subscribeCall = Call.newBuilder()
