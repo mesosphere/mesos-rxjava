@@ -14,24 +14,30 @@
  * limitations under the License.
  */
 
-package com.mesosphere.mesos.rx.java.recordio;
+package com.mesosphere.mesos.rx.java.test;
 
 import com.google.common.base.Charsets;
 import org.apache.mesos.v1.scheduler.Protos;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.List;
-import java.util.function.Function;
-import java.util.stream.Collectors;
-
+/**
+ * A set of utilities for dealing with the RecordIO format.
+ * @see <a href="https://github.com/apache/mesos/blob/master/docs/scheduler-http-api.md#recordio-response-format" target="_blank">RecordIO</a>
+ */
 public final class RecordIOUtils {
     private static final byte NEW_LINE_BYTE = Charsets.UTF_8.encode("\n").array()[0];
     private static final int NEW_LINE_BYTE_SIZE = 1;
 
     private RecordIOUtils() {}
 
+    /**
+     * Encodes an {@link org.apache.mesos.v1.scheduler.Protos.Event Event} into a {@code byte[]} following
+     * the scheme used for RecordIO
+     * @param e    {@link org.apache.mesos.v1.scheduler.Protos.Event} to encode
+     * @return     A {@code byte[]} representing the RecordIO encoded bytes for {@code e}
+     */
     @NotNull
-    static byte[] eventToChunk(@NotNull final Protos.Event e) {
+    public static byte[] eventToChunk(@NotNull final Protos.Event e) {
         final byte[] bytes = e.toByteArray();
         final byte[] messageSize = Charsets.UTF_8.encode(Integer.toString(bytes.length)).array();
 
@@ -42,14 +48,6 @@ public final class RecordIOUtils {
         chunk[messageSizeLength] = NEW_LINE_BYTE;
         System.arraycopy(bytes, 0, chunk, messageSizeLength + 1, bytes.length);
         return chunk;
-    }
-
-    @NotNull
-    static <T, R> List<R> listMap(@NotNull final List<T> input, @NotNull final Function<T, R> mapper) {
-        return input
-            .stream()
-            .map(mapper)
-            .collect(Collectors.toList());
     }
 
 }

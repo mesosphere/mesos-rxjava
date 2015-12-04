@@ -18,6 +18,9 @@ package com.mesosphere.mesos.rx.java;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.net.HttpHeaders;
+import com.mesosphere.mesos.rx.java.util.MessageCodec;
+import com.mesosphere.mesos.rx.java.util.UserAgent;
+import com.mesosphere.mesos.rx.java.util.UserAgentEntry;
 import io.netty.buffer.ByteBuf;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import io.netty.util.CharsetUtil;
@@ -42,8 +45,8 @@ import java.util.Optional;
 import java.util.concurrent.*;
 import java.util.function.Function;
 
-import static com.mesosphere.mesos.rx.java.UserAgentEntries.userAgentEntryForGradleArtifact;
-import static com.mesosphere.mesos.rx.java.UserAgentEntries.userAgentEntryForMavenArtifact;
+import static com.mesosphere.mesos.rx.java.util.UserAgentEntries.userAgentEntryForGradleArtifact;
+import static com.mesosphere.mesos.rx.java.util.UserAgentEntries.userAgentEntryForMavenArtifact;
 import static rx.Observable.just;
 
 /**

@@ -20,7 +20,7 @@ import org.apache.mesos.MesosSchedulerDriver;
 import org.apache.mesos.Protos;
 import org.apache.mesos.Scheduler;
 import org.apache.mesos.SchedulerDriver;
-import com.mesosphere.mesos.rx.java.ProtoUtils;
+import com.mesosphere.mesos.rx.java.util.ProtoUtils;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

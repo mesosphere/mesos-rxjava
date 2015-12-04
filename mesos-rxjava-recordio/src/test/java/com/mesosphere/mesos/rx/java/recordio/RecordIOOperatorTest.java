@@ -16,7 +16,10 @@
 
 package com.mesosphere.mesos.rx.java.recordio;
 
+import com.google.common.primitives.Bytes;
 import com.google.protobuf.InvalidProtocolBufferException;
+import com.mesosphere.mesos.rx.java.test.RecordIOUtils;
+import com.mesosphere.mesos.rx.java.util.CollectionUtils;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import com.mesosphere.mesos.rx.java.test.TestingProtos;
@@ -28,6 +31,7 @@ import rx.observers.TestSubscriber;
 
 import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import static com.google.common.collect.Lists.newArrayList;
@@ -49,8 +53,7 @@ public class RecordIOOperatorTest {
         TestingProtos.HEARTBEAT
     );
 
-    private static final List<byte[]> EVENT_CHUNKS = RecordIOUtils.listMap(EVENT_PROTOS, RecordIOUtils::eventToChunk);
-
+    private static final List<byte[]> EVENT_CHUNKS = CollectionUtils.listMap(EVENT_PROTOS, RecordIOUtils::eventToChunk);
 
     @Test
     public void correctlyAbleToReadEventsFromEventsBinFile() throws Exception {
@@ -65,7 +68,7 @@ public class RecordIOOperatorTest {
         }
 
         final List<Event> events = runTestOnChunks(chunks);
-        final List<Event.Type> eventTypes = RecordIOUtils.listMap(events, Event::getType);
+        final List<Event.Type> eventTypes = CollectionUtils.listMap(events, Event::getType);
 
         assertThat(eventTypes).isEqualTo(newArrayList(
             Event.Type.SUBSCRIBED,
@@ -115,7 +118,7 @@ public class RecordIOOperatorTest {
 
     @Test
     public void readEvents_eventsNotSpanningMultipleChunks() throws Exception {
-        final List<ByteBuf> eventBufs = RecordIOUtils.listMap(EVENT_CHUNKS, Unpooled::copiedBuffer);
+        final List<ByteBuf> eventBufs = CollectionUtils.listMap(EVENT_CHUNKS, Unpooled::copiedBuffer);
 
         final List<Event> events = runTestOnChunks(eventBufs);
         assertThat(events).isEqualTo(EVENT_PROTOS);
@@ -123,9 +126,9 @@ public class RecordIOOperatorTest {
 
     @Test
     public void readEvents_eventsSpanningMultipleChunks() throws Exception {
-        final byte[] allBytes = ByteArrays.concatAllChunks(EVENT_CHUNKS);
-        final List<byte[]> arrayChunks = ByteArrays.partitionIntoArraysOfSize(allBytes, 10);
-        final List<ByteBuf> bufChunks = RecordIOUtils.listMap(arrayChunks, Unpooled::copiedBuffer);
+        final byte[] allBytes = concatAllChunks(EVENT_CHUNKS);
+        final List<byte[]> arrayChunks = partitionIntoArraysOfSize(allBytes, 10);
+        final List<ByteBuf> bufChunks = CollectionUtils.listMap(arrayChunks, Unpooled::copiedBuffer);
 
         final List<Event> events = runTestOnChunks(bufChunks);
         assertThat(events).isEqualTo(EVENT_PROTOS);
@@ -138,13 +141,14 @@ public class RecordIOOperatorTest {
             TestingProtos.HEARTBEAT,
             TestingProtos.OFFER
         );
-        final List<byte[]> eventChunks = RecordIOUtils.listMap(subHbOffer, RecordIOUtils::eventToChunk);
-        final List<ByteBuf> singleChunk = newArrayList(Unpooled.copiedBuffer(ByteArrays.concatAllChunks(eventChunks)));
+        final List<byte[]> eventChunks = CollectionUtils.listMap(subHbOffer, RecordIOUtils::eventToChunk);
+        final List<ByteBuf> singleChunk = newArrayList(Unpooled.copiedBuffer(concatAllChunks(eventChunks)));
 
         final List<Event> events = runTestOnChunks(singleChunk);
         assertThat(events).isEqualTo(subHbOffer);
     }
 
+    @NotNull
     static List<Event> runTestOnChunks(@NotNull final List<ByteBuf> chunks) {
         final TestSubscriber<byte[]> child = new TestSubscriber<>();
         final Subscriber<ByteBuf> call = new RecordIOOperator().call(child);
@@ -160,13 +164,40 @@ public class RecordIOOperatorTest {
         assertThat(subscriber.messageBytes).isNull();
         assertThat(subscriber.remainingBytesForMessage).isEqualTo(0);
 
-        return RecordIOUtils.listMap(child.getOnNextEvents(), (bs) -> {
+        return CollectionUtils.listMap(child.getOnNextEvents(), (bs) -> {
             try {
                 return Event.parseFrom(bs);
             } catch (InvalidProtocolBufferException e) {
                 throw new RuntimeException(e);
             }
         });
+    }
+
+    @NotNull
+    static List<byte[]> partitionIntoArraysOfSize(@NotNull final byte[] allBytes, final int chunkSize) {
+        final List<byte[]> chunks = new ArrayList<>();
+        final int numFullChunks = allBytes.length / chunkSize;
+
+        int chunkStart = 0;
+        int chunkEnd = 0;
+
+        for (int i = 0; i < numFullChunks; i++) {
+            chunkEnd += chunkSize;
+            chunks.add(Arrays.copyOfRange(allBytes, chunkStart, chunkEnd));
+            chunkStart = chunkEnd;
+        }
+
+        if (chunkStart < allBytes.length) {
+            chunks.add(Arrays.copyOfRange(allBytes, chunkStart, allBytes.length));
+        }
+
+        return chunks;
+    }
+
+
+    @NotNull
+    static byte[] concatAllChunks(@NotNull final List<byte[]> chunks) {
+        return Bytes.concat(chunks.toArray(new byte[chunks.size()][]));
     }
 
 }

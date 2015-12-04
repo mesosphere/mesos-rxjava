@@ -90,6 +90,7 @@
         <module>mesos-rxjava-recordio</module>
         <module>mesos-rxjava-example</module>
         <module>mesos-rxjava-test</module>
+        <module>mesos-rxjava-util</module>
     </modules>
 
     <distributionManagement>
@@ -111,6 +112,11 @@
             <dependency>
                 <groupId>com.mesosphere.mesos.rx.java</groupId>
                 <artifactId>mesos-rxjava-recordio</artifactId>
+                <version>0.1.0-SNAPSHOT</version>
+            </dependency>
+            <dependency>
+                <groupId>com.mesosphere.mesos.rx.java</groupId>
+                <artifactId>mesos-rxjava-util</artifactId>
                 <version>0.1.0-SNAPSHOT</version>
             </dependency>
             <dependency>

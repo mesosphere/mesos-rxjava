@@ -38,8 +38,29 @@
 
     <dependencies>
         <dependency>
+            <groupId>com.mesosphere.mesos.rx.java</groupId>
+            <artifactId>mesos-rxjava-util</artifactId>
+        </dependency>
+        <dependency>
             <groupId>org.apache.mesos</groupId>
             <artifactId>mesos</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.reactivex</groupId>
+            <artifactId>rxnetty</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.reactivex</groupId>
+            <artifactId>rxjava</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.netty</groupId>
+            <artifactId>netty-codec-http</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <scope>compile</scope>
         </dependency>
     </dependencies>
 

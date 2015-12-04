@@ -16,13 +16,14 @@
 
 package com.mesosphere.mesos.rx.java;
 
+import com.mesosphere.mesos.rx.java.util.UserAgent;
 import org.junit.Test;
 
 import java.util.regex.Pattern;
 
-import static com.mesosphere.mesos.rx.java.UserAgentEntries.literal;
-import static com.mesosphere.mesos.rx.java.UserAgentEntries.userAgentEntryForGradleArtifact;
-import static com.mesosphere.mesos.rx.java.UserAgentEntries.userAgentEntryForMavenArtifact;
+import static com.mesosphere.mesos.rx.java.util.UserAgentEntries.literal;
+import static com.mesosphere.mesos.rx.java.util.UserAgentEntries.userAgentEntryForGradleArtifact;
+import static com.mesosphere.mesos.rx.java.util.UserAgentEntries.userAgentEntryForMavenArtifact;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public final class UserAgentTest {
@@ -65,4 +66,14 @@ public final class UserAgentTest {
         assertThat(agent.toString()).isEqualTo("first/1 second/2 (details) third/3");
     }
 
+    @Test
+    public void unfoundResourceThrowsRuntimeException() throws Exception {
+        try {
+            final UserAgent agent = new UserAgent(
+                userAgentEntryForGradleArtifact("something-that-does-not-exist")
+            );
+        } catch (RuntimeException e) {
+            assertThat(e.getMessage()).isEqualTo("Unable to load classpath resource /META-INF/something-that-does-not-exist.properties");
+        }
+    }
 }

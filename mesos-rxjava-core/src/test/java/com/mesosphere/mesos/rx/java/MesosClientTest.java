@@ -18,6 +18,8 @@ package com.mesosphere.mesos.rx.java;
 
 import com.google.common.collect.Maps;
 import com.google.protobuf.ByteString;
+import com.mesosphere.mesos.rx.java.util.SchedulerCalls;
+import com.mesosphere.mesos.rx.java.util.UserAgent;
 import io.netty.buffer.ByteBuf;
 import io.reactivex.netty.protocol.http.client.HttpClientRequest;
 import io.reactivex.netty.protocol.http.client.HttpRequestHeaders;
@@ -32,13 +34,13 @@ import java.net.URI;
 import java.util.*;
 import java.util.regex.Pattern;
 
-import static com.mesosphere.mesos.rx.java.UserAgentEntries.*;
+import static com.mesosphere.mesos.rx.java.util.UserAgentEntries.*;
 import static org.apache.mesos.v1.Protos.*;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public final class MesosClientTest {
 
-    public static final Protos.Call ACK = ProtoUtils.ackUpdate(
+    public static final Protos.Call ACK = SchedulerCalls.ackUpdate(
         FrameworkID.newBuilder().setValue("fwId").build(),
         ByteString.copyFromUtf8("uuid"),
         AgentID.newBuilder().setValue("agentId").build(),

@@ -17,6 +17,8 @@
 package com.mesosphere.mesos.rx.java.example.framework.sleepy;
 
 import com.mesosphere.mesos.rx.java.*;
+import com.mesosphere.mesos.rx.java.util.ProtoUtils;
+import com.mesosphere.mesos.rx.java.util.SchedulerCalls;
 import org.apache.mesos.v1.Protos.*;
 import org.apache.mesos.v1.scheduler.Protos.Call;
 import org.apache.mesos.v1.scheduler.Protos.Event;
@@ -32,10 +34,11 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static com.google.common.collect.Lists.newArrayList;
+import static com.mesosphere.mesos.rx.java.util.SchedulerCalls.subscribe;
 import static java.util.stream.Collectors.groupingBy;
-import static com.mesosphere.mesos.rx.java.ProtoUtils.decline;
+import static com.mesosphere.mesos.rx.java.util.SchedulerCalls.decline;
 import static com.mesosphere.mesos.rx.java.SinkOperations.sink;
-import static com.mesosphere.mesos.rx.java.UserAgentEntries.userAgentEntryForMavenArtifact;
+import static com.mesosphere.mesos.rx.java.util.UserAgentEntries.userAgentEntryForMavenArtifact;
 import static rx.Observable.from;
 import static rx.Observable.just;
 
@@ -82,21 +85,12 @@ public final class Sleepy {
         @NotNull final MesosClientBuilder<Call, Event> clientBuilder
     ) throws Throwable {
 
-        final Call subscribeCall = Call.newBuilder()
-            .setFrameworkId(stateObject.getFwId())
-            .setType(Call.Type.SUBSCRIBE)
-            .setSubscribe(
-                Call.Subscribe.newBuilder()
-                    .setFrameworkInfo(
-                        FrameworkInfo.newBuilder()
-                            .setId(stateObject.getFwId())
-                            .setUser(Optional.ofNullable(System.getenv("user")).orElse("root")) // https://issues.apache.org/jira/browse/MESOS-3747
-                            .setName("sleepy")
-                            .setFailoverTimeout(0)
-                            .build()
-                    )
-            )
-            .build();
+        final Call subscribeCall = subscribe(
+            stateObject.getFwId(),
+            Optional.ofNullable(System.getenv("user")).orElse("root"), // https://issues.apache.org/jira/browse/MESOS-3747
+            "sleepy",
+            0
+        );
 
         final Observable<State<FrameworkID, TaskID, TaskState>> stateObservable = just(stateObject).repeat();
 
@@ -123,7 +117,7 @@ public final class Sleepy {
                     })
                     .map((Tuple2<Event, State<FrameworkID, TaskID, TaskState>> t) -> {
                         final TaskStatus status = t._1.getUpdate().getStatus();
-                        return ProtoUtils.ackUpdate(t._2.getFwId(), status.getUuid(), status.getAgentId(), status.getTaskId());
+                        return SchedulerCalls.ackUpdate(t._2.getFwId(), status.getUuid(), status.getAgentId(), status.getTaskId());
                     })
                     .map(SinkOperations::create)
                     .map(Optional::of);

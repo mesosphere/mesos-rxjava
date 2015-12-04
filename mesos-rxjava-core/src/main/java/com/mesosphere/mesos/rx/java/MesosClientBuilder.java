@@ -16,6 +16,8 @@
 
 package com.mesosphere.mesos.rx.java;
 
+import com.mesosphere.mesos.rx.java.util.MessageCodec;
+import com.mesosphere.mesos.rx.java.util.UserAgentEntry;
 import org.jetbrains.annotations.NotNull;
 import rx.Observable;
 
