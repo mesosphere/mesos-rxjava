@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.mesosphere.mesos.rx.java;
+package com.mesosphere.mesos.rx.java.util;
 
 import org.jetbrains.annotations.NotNull;
 
@@ -23,8 +23,7 @@ import org.jetbrains.annotations.NotNull;
  * of bytes.
  * <p>
  * There should be at least one implementation of this interface for every type of message that can be sent to or
- * received from the Mesos API. For example, Mesos messages in Protocol Buffer format can be translated using
- * {@link ProtoCodec}.
+ * received.
  *
  * @param <T> the message type that this codec is defined for
  */
@@ -56,8 +55,6 @@ public interface MessageCodec<T> {
      * <p>
      * The value returned by this method will be used in the {@code Content-Type} and {@code Accept} headers for
      * messages sent to and received from Mesos, respectively.
-     * <p>
-     * For example, {@link ProtoCodec} uses the media type {@code application/x-protobuf}.
      *
      * @return the media type identifier
      */

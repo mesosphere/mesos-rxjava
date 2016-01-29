@@ -18,6 +18,8 @@ package com.mesosphere.mesos.rx.java;
 
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.Message;
+import com.mesosphere.mesos.rx.java.util.MessageCodec;
+import com.mesosphere.mesos.rx.java.util.ProtoUtils;
 import org.jetbrains.annotations.NotNull;
 
 /**

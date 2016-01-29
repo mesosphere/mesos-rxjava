@@ -26,6 +26,7 @@
     </appender>
 
     <logger name="com.mesosphere.mesos.rx.java" level="debug"/>
+    <logger name="com.mesosphere.mesos.rx.java.test.simulation.AwaitableEventSubscriberDecorator" level="trace"/>
     <logger name="io.netty.handler.logging.LoggingHandler" level="info"/>
 
     <root level="info">

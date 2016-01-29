@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.mesosphere.mesos.rx.java;
+package com.mesosphere.mesos.rx.java.util;
 
 import com.google.common.base.Joiner;
 import org.jetbrains.annotations.NotNull;

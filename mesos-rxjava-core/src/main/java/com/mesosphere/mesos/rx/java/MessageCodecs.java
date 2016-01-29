@@ -16,6 +16,7 @@
 
 package com.mesosphere.mesos.rx.java;
 
+import com.mesosphere.mesos.rx.java.util.MessageCodec;
 import org.apache.mesos.v1.scheduler.Protos;
 import org.jetbrains.annotations.NotNull;
 
@@ -26,10 +27,10 @@ import java.nio.charset.StandardCharsets;
  */
 public final class MessageCodecs {
 
-    /** A {@link com.mesosphere.mesos.rx.java.MessageCodec} for {@link org.apache.mesos.v1.scheduler.Protos.Call}. */
+    /** A {@link MessageCodec} for {@link org.apache.mesos.v1.scheduler.Protos.Call}. */
     public static final MessageCodec<Protos.Call> PROTOS_CALL = new ProtoCodec<>(Protos.Call::parseFrom);
 
-    /** A {@link com.mesosphere.mesos.rx.java.MessageCodec} for {@link org.apache.mesos.v1.scheduler.Protos.Event}. */
+    /** A {@link MessageCodec} for {@link org.apache.mesos.v1.scheduler.Protos.Event}. */
     public static final MessageCodec<Protos.Event> PROTOS_EVENT = new ProtoCodec<>(Protos.Event::parseFrom);
 
     @NotNull

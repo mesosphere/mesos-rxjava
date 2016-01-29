@@ -16,6 +16,8 @@
 
 package com.mesosphere.mesos.rx.java.recordio;
 
+import com.mesosphere.mesos.rx.java.test.RecordIOUtils;
+import com.mesosphere.mesos.rx.java.util.CollectionUtils;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import com.mesosphere.mesos.rx.java.test.TestingProtos;
@@ -51,11 +53,11 @@ public final class RecordIOOperatorChunkSizesTest {
     @Test
     public void test() {
         final byte[] chunk = RecordIOUtils.eventToChunk(TestingProtos.SUBSCRIBED);
-        final List<byte[]> bytes = ByteArrays.partitionIntoArraysOfSize(chunk, chunkSize);
-        final List<ByteBuf> chunks = RecordIOUtils.listMap(bytes, Unpooled::copiedBuffer);
+        final List<byte[]> bytes = RecordIOOperatorTest.partitionIntoArraysOfSize(chunk, chunkSize);
+        final List<ByteBuf> chunks = CollectionUtils.listMap(bytes, Unpooled::copiedBuffer);
 
         final List<Event> events = RecordIOOperatorTest.runTestOnChunks(chunks);
-        final List<Event.Type> eventTypes = RecordIOUtils.listMap(events, Event::getType);
+        final List<Event.Type> eventTypes = CollectionUtils.listMap(events, Event::getType);
 
         assertThat(eventTypes).isEqualTo(newArrayList(Event.Type.SUBSCRIBED));
     }

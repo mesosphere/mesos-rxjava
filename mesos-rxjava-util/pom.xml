@@ -14,58 +14,47 @@
   ~ See the License for the specific language governing permissions and
   ~ limitations under the License.
   -->
+
 <project xmlns="http://maven.apache.org/POM/4.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-    <modelVersion>4.0.0</modelVersion>
-
     <parent>
-        <groupId>com.mesosphere.mesos.rx.java</groupId>
         <artifactId>mesos-rxjava</artifactId>
+        <groupId>com.mesosphere.mesos.rx.java</groupId>
         <version>0.1.0-SNAPSHOT</version>
     </parent>
+    <modelVersion>4.0.0</modelVersion>
 
-    <artifactId>mesos-rxjava-core</artifactId>
+    <artifactId>mesos-rxjava-util</artifactId>
 
-    <name>Mesos RxJava Client :: Core</name>
+    <name>Mesos RxJava Client :: Util</name>
 
-    <properties>
-        <module.deploy.skip>false</module.deploy.skip>
-    </properties>
+    <description>
+        A set of common classes and types used across all modules of the project.
+    </description>
 
     <dependencies>
-        <dependency>
-            <groupId>com.mesosphere.mesos.rx.java</groupId>
-            <artifactId>mesos-rxjava-recordio</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>com.mesosphere.mesos.rx.java</groupId>
-            <artifactId>mesos-rxjava-util</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>com.mesosphere.mesos.rx.java</groupId>
-            <artifactId>mesos-rxjava-test</artifactId>
-        </dependency>
+        <!--
+            This project should NEVER have a dependency on any other modules from this project.
+            This modules is the "lowest" module in the dependency tree and is used by all other
+            modules, as such this module can not depend on any other module since it will create
+            a cycle.
+        -->
         <dependency>
             <groupId>org.apache.mesos</groupId>
             <artifactId>mesos</artifactId>
         </dependency>
         <dependency>
-            <groupId>io.reactivex</groupId>
-            <artifactId>rxjava</artifactId>
+            <groupId>io.netty</groupId>
+            <artifactId>netty-codec-http</artifactId>
+            <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>io.reactivex</groupId>
             <artifactId>rxnetty</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>io.netty</groupId>
-            <artifactId>netty-codec-http</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>io.netty</groupId>
-            <artifactId>netty-transport-native-epoll</artifactId>
+            <scope>test</scope>
         </dependency>
     </dependencies>
+
 
 </project>

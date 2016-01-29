@@ -26,7 +26,7 @@ import java.util.Base64;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 
-public class ProtoCodecTest {
+public final class MessageCodecsTest {
 
     @NotNull
     private static final byte[] SERIALIZED_HEARTBEAT = Base64.getDecoder().decode("CAg=");

@@ -14,12 +14,10 @@
  * limitations under the License.
  */
 
-package com.mesosphere.mesos.rx.java;
+package com.mesosphere.mesos.rx.java.util;
 
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -30,14 +28,12 @@ import java.util.function.Function;
  * A set of utility methods that can be used to easily create {@link UserAgentEntry} objects.
  */
 public final class UserAgentEntries {
-    public static final Logger LOGGER = LoggerFactory.getLogger(UserAgent.class);
 
     private UserAgentEntries() {}
 
     @NotNull
     public static Function<Class<?>, UserAgentEntry> literal(@NotNull final String name, @NotNull final String version) {
         return (Class<?> c) -> new UserAgentEntry(name, version);
-
     }
 
     @NotNull
@@ -45,7 +41,7 @@ public final class UserAgentEntries {
         @NotNull final String name,
         @NotNull final String version,
         @Nullable final String details
-        ) {
+    ) {
         return (Class<?> c) -> new UserAgentEntry(name, version, details);
 
     }
@@ -76,7 +72,7 @@ public final class UserAgentEntries {
                 resourceAsStream.close();
             }
         } catch (IOException e) {
-            LOGGER.warn("Unable to load classpath resources " + resourcePath, e);
+            throw new RuntimeException("Unable to load classpath resource " + resourcePath, e);
         }
         return props;
     }
