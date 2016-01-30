@@ -19,6 +19,8 @@ package com.mesosphere.mesos.rx.java.util;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.Objects;
+
 /**
  * A specific Entry to be listed in the HTTP User-Agent header
  */
@@ -53,6 +55,25 @@ public final class UserAgentEntry {
     @Nullable
     public String getDetails() {
         return details;
+    }
+
+    @Override
+    public boolean equals(final Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        final UserAgentEntry that = (UserAgentEntry) o;
+        return Objects.equals(name, that.name) &&
+            Objects.equals(version, that.version) &&
+            Objects.equals(details, that.details);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(name, version, details);
     }
 
     @Override
