@@ -45,6 +45,7 @@ import static rx.Observable.just;
 /**
  * A relatively simple Mesos framework that launches {@code sleep $SLEEP_SECONDS} tasks for offers it receives.
  * This framework uses the Mesos HTTP Scheduler API.
+ * @see <a href="https://github.com/mesosphere/mesos-rxjava/blob/master/mesos-rxjava-example/mesos-rxjava-example-framework/src/main/java/com/mesosphere/mesos/rx/java/example/framework/sleepy/Sleepy.java">Sleepy.java</a>
  */
 public final class Sleepy {
     private static final Logger LOGGER = LoggerFactory.getLogger(Sleepy.class);

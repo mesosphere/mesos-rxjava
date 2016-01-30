@@ -23,6 +23,8 @@ import org.jetbrains.annotations.NotNull;
  * A collection of methods that have some pre-defined {@link MesosClientBuilder} configurations.
  */
 public final class MesosClientBuilders {
+    private MesosClientBuilders() {}
+
     /**
      * @return  An initial {@link MesosClientBuilder} that will use protobuf
      *          for the {@link org.apache.mesos.v1.scheduler.Protos.Call} and

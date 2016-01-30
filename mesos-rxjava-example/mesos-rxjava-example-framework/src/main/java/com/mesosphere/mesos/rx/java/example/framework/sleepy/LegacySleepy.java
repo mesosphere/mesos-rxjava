@@ -37,6 +37,7 @@ import static org.apache.mesos.Protos.*;
 /**
  * A relatively simple Mesos framework that launches {@code sleep $SLEEP_SECONDS} tasks for offers it receives.
  * This framework uses the legacy libmesos API.
+ * @see <a href="https://github.com/mesosphere/mesos-rxjava/blob/master/mesos-rxjava-example/mesos-rxjava-example-framework/src/main/java/com/mesosphere/mesos/rx/java/example/framework/sleepy/LegacySleepy.java">LegacySleepy.java</a>
  */
 public final class LegacySleepy implements Scheduler {
     private static final Logger LOGGER = LoggerFactory.getLogger(LegacySleepy.class);
