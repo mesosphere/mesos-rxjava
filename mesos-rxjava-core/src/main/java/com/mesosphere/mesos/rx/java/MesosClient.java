@@ -212,7 +212,7 @@ public final class MesosClient<Send, Receive> {
     /**
      * Decorator for {@link Subscriber} that will keep track of "complete"ness and when complete will put an
      * item onto a blocking queue. {@link Callable#call()} will then block until there is an item on the queue.
-     * If the item in the queue contains and exception, that exception will be throw back up to the user.
+     * If the item in the queue contains an exception, that exception will be throw back up to the user.
      */
     @VisibleForTesting
     static final class SubscriberDecorator<T> extends Subscriber<T> implements Callable<Optional<Throwable>> {

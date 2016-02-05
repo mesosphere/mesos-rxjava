@@ -87,7 +87,7 @@ public final class RecordIOOperator implements Operator<byte[], ByteBuf> {
 
         /**
          * The allocated {@code byte[]} for the current message being read from the stream.
-         * Once the all the bytes of the message have been read this reference will be
+         * Once all the bytes of the message have been read this reference will be
          * nulled out until the next message size has been resolved.
          */
         byte[] messageBytes = null;

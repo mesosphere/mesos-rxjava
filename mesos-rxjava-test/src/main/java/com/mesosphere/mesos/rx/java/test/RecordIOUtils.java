@@ -33,7 +33,7 @@ public final class RecordIOUtils {
     /**
      * Encodes an {@link org.apache.mesos.v1.scheduler.Protos.Event Event} into a {@code byte[]} following
      * the scheme used for RecordIO
-     * @param e    {@link org.apache.mesos.v1.scheduler.Protos.Event} to encode
+     * @param e    {@link org.apache.mesos.v1.scheduler.Protos.Event Event} to encode
      * @return     A {@code byte[]} representing the RecordIO encoded bytes for {@code e}
      */
     @NotNull

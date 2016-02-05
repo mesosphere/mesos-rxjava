@@ -55,8 +55,8 @@ import static com.mesosphere.mesos.rx.java.util.ProtoUtils.protoToString;
  *     <li>Only supported method is {@code POST}.</li>
  *     <li>All requests sent to the server must specify {@code Content-Length} header.</li>
  *     <li>Only protobuf is supported ({@code Content-Type: application/x-protobuf} and {@code Accept: application/x-protobuf}).</li>
- *     <li>All messages sent to the server are interpreted as {@link Protos.Call}s.</li>
- *     <li>All messages sent from the server are {@link Protos.Event}s.</li>
+ *     <li>All messages sent to the server are interpreted as {@link Protos.Call Call}s.</li>
+ *     <li>All messages sent from the server are {@link Protos.Event Event}s.</li>
  *     <li>Authentication and Authorization are completely ignored.</li>
  *     <li>The events to be sent by the server are represented by the {@link Observable} passed to the constructor.</li>
  *     <li>Server only supports one event stream, once that stream is complete a new server will need to be created.</li>
@@ -85,11 +85,12 @@ public final class MesosSchedulerSimulation {
 
     /**
      * Create a {@code MesosSchedulerSimulation} that will use {@code events} as the event stream to return to a
-     * well formed {@link Protos.Call.Type#SUBSCRIBE} request.
+     * well formed {@link Protos.Call.Type#SUBSCRIBE SUBSCRIBE} request.
      * <p>
      * The simulation server must be started using {@link #start()} before requests can be serviced by the server.
-     * @param events    The event stream to be returned by the server upon a well formed {@link Protos.Call.Type#SUBSCRIBE}
-     *                  request. For each event sent to {@code events}, the event will be sent by the server.
+     * @param events    The event stream to be returned by the server upon a well formed
+     *                  {@link Protos.Call.Type#SUBSCRIBE SUBSCRIBE} request. For each event sent to {@code events},
+     *                  the event will be sent by the server.
      */
     public MesosSchedulerSimulation(@NotNull final Observable<Protos.Event> events) {
         this.callsReceived = newArrayList();
@@ -174,8 +175,8 @@ public final class MesosSchedulerSimulation {
     }
 
     /**
-     * An unmodifiable list of all {@link org.apache.mesos.v1.scheduler.Protos.Call}s received by the server.
-     * @return An unmodifiable list of all {@link org.apache.mesos.v1.scheduler.Protos.Call}s received by the server.
+     * An unmodifiable list of all {@link org.apache.mesos.v1.scheduler.Protos.Call Call}s received by the server.
+     * @return An unmodifiable list of all {@link org.apache.mesos.v1.scheduler.Protos.Call Call}s received by the server.
      */
     @NotNull
     public List<Protos.Call> getCallsReceived() {
@@ -240,7 +241,7 @@ public final class MesosSchedulerSimulation {
     }
 
     /**
-     * Block the invoking thread until {@code callCount} {@link Protos.Call Call}s are received by the server.
+     * Block the invoking thread until a {@link Protos.Call Call} is received by the server.
      * <p>
      * @throws InterruptedException if the current thread is interrupted while waiting
      */

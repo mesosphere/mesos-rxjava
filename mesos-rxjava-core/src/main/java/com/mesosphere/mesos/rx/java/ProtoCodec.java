@@ -38,7 +38,7 @@ public final class ProtoCodec<T extends Message> implements MessageCodec<T> {
      * <p>
      * The specific parser that is provided defines which protobuf message class this codec is for. For example,
      * {@code new ProtoCodec<>(Protos.Event::parseFrom)} instantiates a codec for
-     * {@link org.apache.mesos.v1.scheduler.Protos.Event} messages.
+     * {@link org.apache.mesos.v1.scheduler.Protos.Event Event} messages.
      *
      * @param parser the protobuf parsing method
      */

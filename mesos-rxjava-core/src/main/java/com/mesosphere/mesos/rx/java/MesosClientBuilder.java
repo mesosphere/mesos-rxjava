@@ -32,7 +32,7 @@ import static com.google.common.base.Preconditions.checkNotNull;
  * <p>
  * PLEASE NOTE: All methods in this class function as "set" rather than "copy with new value"
  * @param <Send>       The type of objects that will be sent to Mesos
- * @param <Receive>    The type of objects are expected from Mesos
+ * @param <Receive>    The type of objects that are expected from Mesos
  */
 public final class MesosClientBuilder<Send, Receive> {
 
@@ -77,7 +77,7 @@ public final class MesosClientBuilder<Send, Receive> {
     }
 
     /**
-     * Sets the function used to create a {@link UserAgentEntry} to be included the {@code User-Agent} header
+     * Sets the function used to create a {@link UserAgentEntry} to be included in the {@code User-Agent} header
      * sent to Mesos for all requests.
      * @param applicationUserAgentEntry    Function to provide the {@link UserAgentEntry}
      * @return this builder (allowing for further chained calls)
@@ -117,9 +117,7 @@ public final class MesosClientBuilder<Send, Receive> {
     }
 
     /**
-     * @param subscribe     The {@link org.apache.mesos.v1.scheduler.Protos.Call.Type#SUBSCRIBE}
-     *                      {@link org.apache.mesos.v1.scheduler.Protos.Call} to be sent to Mesos
-     *                      when opening the event stream.
+     * @param subscribe     The {@code SUBSCRIBE} message to be sent to Mesos to open the event stream.
      * @return this builder (allowing for further chained calls)
      */
     @NotNull
@@ -135,10 +133,10 @@ public final class MesosClientBuilder<Send, Receive> {
      * <p>
      * The function passed to this method will function as the actual event processing code for the user.
      * <p>
-     * The stream the users will source from is an {@link Observable} of {@code Receive}s. With this stream
+     * The stream the user will source from is an {@link Observable} of {@code Receive}s. With this stream
      * source a number of functions can be applied to transform/interact/evaluate the stream.
      * <p>
-     * The output of this function represents the users reaction to each event represented as an
+     * The output of this function is the users reaction to each event represented as an
      * {@code Observable<Optional<SinkOperation<Send>>>}. If {@link Optional#isPresent()} the specified
      * {@link SinkOperation} will be processed.
      * <p>
