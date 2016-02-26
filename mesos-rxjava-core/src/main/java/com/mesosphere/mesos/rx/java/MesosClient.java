@@ -158,9 +158,9 @@ public final class MesosClient<Send, Receive> {
 
                 final MesosClientErrorContext context = new MesosClientErrorContext(code, errorMessage, entries);
                 if (400 <= code && code < 500) {
-                    throw new MesosClientException(subscription, context);
+                    throw new Mesos4xxException(subscription, context);
                 } else if (500 <= code && code < 600) {
-                    throw new MesosServerException(subscription, context);
+                    throw new Mesos5xxException(subscription, context);
                 } else {
                     LOGGER.warn("Unhandled error: context = {}", context);
                     // This shouldn't actually ever happen, but it's here for completeness of the if-else tree

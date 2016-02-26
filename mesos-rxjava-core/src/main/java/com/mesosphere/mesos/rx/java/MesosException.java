@@ -1,5 +1,5 @@
 /*
- *    Copyright (C) 2015 Mesosphere, Inc
+ *    Copyright (C) 2016 Mesosphere, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,9 +17,9 @@
 package com.mesosphere.mesos.rx.java;
 
 /**
- * This class represents a client error (HTTP 400 series) occurred while sending a request to Mesos.
+ * This class represents an error occurred while sending a request to Mesos.
  */
-public final class MesosClientException extends RuntimeException {
+public class MesosException extends RuntimeException {
     private final Object originalCall;
     private final MesosClientErrorContext context;
 
@@ -28,7 +28,7 @@ public final class MesosClientException extends RuntimeException {
      * @param originalCall    The original object that was sent to Mesos.
      * @param context         The response context built from the Mesos response.
      */
-    public MesosClientException(final Object originalCall, final MesosClientErrorContext context) {
+    public MesosException(final Object originalCall, final MesosClientErrorContext context) {
         super(
             "Error while trying to send request."
                 + " Status: " + context.getStatusCode()
@@ -53,4 +53,5 @@ public final class MesosClientException extends RuntimeException {
     public MesosClientErrorContext getContext() {
         return context;
     }
+
 }
