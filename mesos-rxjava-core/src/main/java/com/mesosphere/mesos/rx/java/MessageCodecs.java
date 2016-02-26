@@ -58,7 +58,7 @@ public final class MessageCodecs {
         @NotNull
         @Override
         public String mediaType() {
-            return "text/plain";
+            return "text/plain;charset=utf-8";
         }
 
         @NotNull
