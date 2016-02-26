@@ -20,6 +20,8 @@ import com.google.common.base.Charsets;
 import org.apache.mesos.v1.scheduler.Protos;
 import org.jetbrains.annotations.NotNull;
 
+import static io.netty.util.internal.ObjectUtil.checkNotNull;
+
 /**
  * A set of utilities for dealing with the RecordIO format.
  * @see <a href="https://github.com/apache/mesos/blob/master/docs/scheduler-http-api.md#recordio-response-format" target="_blank">RecordIO</a>
@@ -38,7 +40,14 @@ public final class RecordIOUtils {
      */
     @NotNull
     public static byte[] eventToChunk(@NotNull final Protos.Event e) {
+        checkNotNull(e, "e must not be null");
         final byte[] bytes = e.toByteArray();
+        return createChunk(bytes);
+    }
+
+    @NotNull
+    public static byte[] createChunk(@NotNull final byte[] bytes) {
+        checkNotNull(bytes, "bytes must not be null");
         final byte[] messageSize = Charsets.UTF_8.encode(Integer.toString(bytes.length)).array();
 
         final int messageSizeLength = messageSize.length;
