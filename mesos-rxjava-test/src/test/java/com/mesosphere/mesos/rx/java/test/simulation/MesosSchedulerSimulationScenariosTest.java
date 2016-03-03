@@ -236,7 +236,10 @@ public final class MesosSchedulerSimulationScenariosTest {
     }
 
     @NotNull
-    private static Observable<byte[]> openStream(final HttpClient<ByteBuf, ByteBuf> httpClient, final HttpClientRequest<ByteBuf> request) {
+    private static Observable<byte[]> openStream(
+        @NotNull final HttpClient<ByteBuf, ByteBuf> httpClient,
+        @NotNull final HttpClientRequest<ByteBuf> request
+    ) {
         return httpClient.submit(request)
             .flatMap(response -> {
                 assertThat(response.getStatus()).isEqualTo(HttpResponseStatus.OK);

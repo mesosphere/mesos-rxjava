@@ -76,10 +76,10 @@ final class SinkSubscriber<Send> extends Subscriber<SinkOperation<Send>> {
                             .forEach(context -> {
                                 if (400 <= code && code < 500) {
                                     // client error
-                                    op.onError(new MesosClientException(toSink, context));
+                                    op.onError(new Mesos4xxException(toSink, context));
                                 } else if (500 <= code && code < 600) {
                                     // client error
-                                    op.onError(new MesosServerException(toSink, context));
+                                    op.onError(new Mesos5xxException(toSink, context));
                                 } else {
                                     // Unknown error
                                     LOGGER.warn("Unhandled error: context = {}", context);

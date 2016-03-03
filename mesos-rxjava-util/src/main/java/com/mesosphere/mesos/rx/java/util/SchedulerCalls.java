@@ -69,8 +69,8 @@ public final class SchedulerCalls {
      * Utility method to more succinctly construct a {@link Call Call} of type {@link Type#DECLINE DECLINE}.
      * <p>
      *
-     * @param frameworkId    The {@link Protos.FrameworkID} to be set on the {@link Call}
-     * @param offerIds       A list of {@link Protos.OfferID} from the
+     * @param frameworkId    The {@link Protos.FrameworkID FrameworkID} to be set on the {@link Call}
+     * @param offerIds       A list of {@link Protos.OfferID OfferID} from the
      *                       {@link Protos.Offer}s received from Mesos.
      * @return  A {@link Call} with a configured {@link Decline}.
      */
@@ -90,11 +90,12 @@ public final class SchedulerCalls {
      * Utility method to more succinctly construct a {@link Call Call} of type {@link Type#SUBSCRIBE SUBSCRIBE}.
      * <p>
      *
-     * @param frameworkId               The frameworkId to set on the {@link Protos.FrameworkInfo} and
+     * @param frameworkId               The frameworkId to set on the {@link Protos.FrameworkInfo FrameworkInfo} and
      *                                  {@link Call Call} messages.
-     * @param user                      The user to set on the {@link Protos.FrameworkInfo} message.
-     * @param frameworkName             The name to set on the {@link Protos.FrameworkInfo} message.
-     * @param failoverTimeoutSeconds    The failoverTimeoutSeconds to set on the {@link Protos.FrameworkInfo} message.
+     * @param user                      The user to set on the {@link Protos.FrameworkInfo FrameworkInfo} message.
+     * @param frameworkName             The name to set on the {@link Protos.FrameworkInfo FrameworkInfo} message.
+     * @param failoverTimeoutSeconds    The failoverTimeoutSeconds to set on the
+     *                                  {@link Protos.FrameworkInfo FrameworkInfo} message.
      * @return An {@link Call Call} of type {@link Type#SUBSCRIBE SUBSCRIBE} with the configured
      * {@link Subscribe Subscribe} sub-message.
      */
@@ -113,11 +114,12 @@ public final class SchedulerCalls {
      * Utility method to more succinctly construct a {@link Call Call} of type {@link Type#SUBSCRIBE SUBSCRIBE}.
      * <p>
      *
-     * @param frameworkId               The frameworkId to set on the {@link Protos.FrameworkInfo} and
+     * @param frameworkId               The frameworkId to set on the {@link Protos.FrameworkInfo FrameworkInfo} and
      *                                  {@link Call Call} messages.
-     * @param user                      The user to set on the {@link Protos.FrameworkInfo} message.
-     * @param frameworkName             The name to set on the {@link Protos.FrameworkInfo} message.
-     * @param failoverTimeoutSeconds    The failoverTimeoutSeconds to set on the {@link Protos.FrameworkInfo} message.
+     * @param user                      The user to set on the {@link Protos.FrameworkInfo FrameworkInfo} message.
+     * @param frameworkName             The name to set on the {@link Protos.FrameworkInfo FrameworkInfo} message.
+     * @param failoverTimeoutSeconds    The failoverTimeoutSeconds to set on the
+     *                                  {@link Protos.FrameworkInfo FrameworkInfo} message.
      * @return An {@link Call Call} of type {@link Type#SUBSCRIBE SUBSCRIBE} with the configured
      * {@link Subscribe Subscribe} sub-message.
      */

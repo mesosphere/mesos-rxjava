@@ -27,8 +27,8 @@ public final class MesosClientBuilders {
 
     /**
      * @return  An initial {@link MesosClientBuilder} that will use protobuf
-     *          for the {@link org.apache.mesos.v1.scheduler.Protos.Call} and
-     *          {@link org.apache.mesos.v1.scheduler.Protos.Event} messages.
+     *          for the {@link org.apache.mesos.v1.scheduler.Protos.Call Call} and
+     *          {@link org.apache.mesos.v1.scheduler.Protos.Event Event} messages.
      */
     @NotNull
     public static MesosClientBuilder<Protos.Call, Protos.Event> schedulerUsingProtos() {

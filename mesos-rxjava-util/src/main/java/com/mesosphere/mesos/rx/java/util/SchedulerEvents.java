@@ -122,7 +122,7 @@ public final class SchedulerEvents {
      *                       {@link Protos.Event.Message Message}.
      * @param data           The {@link Protos.Event.Message#getData() data} to be set on the
      *                       {@link Protos.Event.Message Message}.
-     * @return  A {@link Protos.Call} with a configured {@link Protos.Call.Acknowledge}.
+     * @return  A {@link Protos.Call Call} with a configured {@link Protos.Call.Acknowledge Acknowledge}.
      */
     @NotNull
     public static Protos.Event message(
@@ -147,7 +147,7 @@ public final class SchedulerEvents {
      *                       {@link Protos.Event.Message Message}.
      * @param data           The {@link Protos.Event.Message#getData() data} to be set on the
      *                       {@link Protos.Event.Message Message}.
-     * @return  A {@link Protos.Call} with a configured {@link Protos.Call.Acknowledge}.
+     * @return  A {@link Protos.Call Call} with a configured {@link Protos.Call.Acknowledge Acknowledge}.
      */
     @NotNull
     public static Protos.Event message(

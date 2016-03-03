@@ -27,10 +27,10 @@ import java.nio.charset.StandardCharsets;
  */
 public final class MessageCodecs {
 
-    /** A {@link MessageCodec} for {@link org.apache.mesos.v1.scheduler.Protos.Call}. */
+    /** A {@link MessageCodec} for {@link org.apache.mesos.v1.scheduler.Protos.Call Call}. */
     public static final MessageCodec<Protos.Call> PROTOS_CALL = new ProtoCodec<>(Protos.Call::parseFrom);
 
-    /** A {@link MessageCodec} for {@link org.apache.mesos.v1.scheduler.Protos.Event}. */
+    /** A {@link MessageCodec} for {@link org.apache.mesos.v1.scheduler.Protos.Event Event}. */
     public static final MessageCodec<Protos.Event> PROTOS_EVENT = new ProtoCodec<>(Protos.Event::parseFrom);
 
     @NotNull
@@ -58,7 +58,7 @@ public final class MessageCodecs {
         @NotNull
         @Override
         public String mediaType() {
-            return "text/plain";
+            return "text/plain;charset=utf-8";
         }
 
         @NotNull
