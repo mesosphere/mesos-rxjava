@@ -16,7 +16,10 @@
 
 package com.mesosphere.mesos.rx.java.example.framework.sleepy;
 
-import com.mesosphere.mesos.rx.java.*;
+import com.mesosphere.mesos.rx.java.MesosClientBuilder;
+import com.mesosphere.mesos.rx.java.MesosClientBuilders;
+import com.mesosphere.mesos.rx.java.SinkOperation;
+import com.mesosphere.mesos.rx.java.SinkOperations;
 import com.mesosphere.mesos.rx.java.util.ProtoUtils;
 import com.mesosphere.mesos.rx.java.util.SchedulerCalls;
 import org.apache.mesos.v1.Protos.*;
@@ -34,11 +37,11 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static com.google.common.collect.Lists.newArrayList;
-import static com.mesosphere.mesos.rx.java.util.SchedulerCalls.subscribe;
-import static java.util.stream.Collectors.groupingBy;
-import static com.mesosphere.mesos.rx.java.util.SchedulerCalls.decline;
 import static com.mesosphere.mesos.rx.java.SinkOperations.sink;
+import static com.mesosphere.mesos.rx.java.util.SchedulerCalls.decline;
+import static com.mesosphere.mesos.rx.java.util.SchedulerCalls.subscribe;
 import static com.mesosphere.mesos.rx.java.util.UserAgentEntries.userAgentEntryForMavenArtifact;
+import static java.util.stream.Collectors.groupingBy;
 import static rx.Observable.from;
 import static rx.Observable.just;
 
@@ -58,33 +61,29 @@ public final class Sleepy {
      * }</pre>
      * @param args    Application arguments mesos-uri and cpus-per-task.
      */
-    public static void main(final String[] args) {
+    public static void main(final String... args) {
         try {
-            if (args.length != 2) {
-                final String className = Sleepy.class.getCanonicalName();
-                System.err.println("Usage: java -cp <application-jar> " + className + " <mesos-uri> <cpus-per-task>");
-            }
-
-            final URI mesosUri = URI.create(args[0]);
-            final double cpusPerTask = Double.parseDouble(args[1]);
-            final FrameworkID fwId = FrameworkID.newBuilder().setValue("sleepy-" + UUID.randomUUID()).build();
-            final State<FrameworkID, TaskID, TaskState> state = new State<>(fwId, cpusPerTask, 32);
-
-            final MesosClientBuilder<Call, Event> clientBuilder = MesosClientBuilders.schedulerUsingProtos()
-                .mesosUri(mesosUri)
-                .applicationUserAgentEntry(userAgentEntryForMavenArtifact("com.mesosphere.mesos.rx.java.example", "mesos-rxjava-example"));
-
-            _main(state, clientBuilder);
+            _main("sleepy-" + UUID.randomUUID(), args);
         } catch (Throwable e) {
             LOGGER.error("Unhandled exception caught at main", e);
             System.exit(1);
         }
     }
 
-    private static void _main(
-        @NotNull final State<FrameworkID, TaskID, TaskState> stateObject,
-        @NotNull final MesosClientBuilder<Call, Event> clientBuilder
-    ) throws Throwable {
+    static void _main(final String fwId, final String... args) throws Throwable {
+        if (args.length != 2) {
+            final String className = Sleepy.class.getCanonicalName();
+            System.err.println("Usage: java -cp <application-jar> " + className + " <mesos-uri> <cpus-per-task>");
+        }
+
+        final URI mesosUri = URI.create(args[0]);
+        final double cpusPerTask = Double.parseDouble(args[1]);
+        final FrameworkID frameworkID = FrameworkID.newBuilder().setValue(fwId).build();
+        final State<FrameworkID, TaskID, TaskState> stateObject = new State<>(frameworkID, cpusPerTask, 32);
+
+        final MesosClientBuilder<Call, Event> clientBuilder = MesosClientBuilders.schedulerUsingProtos()
+            .mesosUri(mesosUri)
+            .applicationUserAgentEntry(userAgentEntryForMavenArtifact("com.mesosphere.mesos.rx.java.example", "mesos-rxjava-example"));
 
         final Call subscribeCall = subscribe(
             stateObject.getFwId(),
