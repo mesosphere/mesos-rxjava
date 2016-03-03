@@ -27,6 +27,8 @@ import org.apache.mesos.v1.scheduler.Protos;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.Marker;
+import org.slf4j.MarkerFactory;
 import rx.Observable;
 import rx.Subscription;
 import rx.subjects.PublishSubject;
@@ -34,6 +36,7 @@ import rx.subjects.Subject;
 import rx.subscriptions.MultipleAssignmentSubscription;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -42,7 +45,6 @@ import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import static com.google.common.collect.Lists.newArrayList;
 import static com.mesosphere.mesos.rx.java.util.ProtoUtils.protoToString;
 
 /**
@@ -64,6 +66,8 @@ import static com.mesosphere.mesos.rx.java.util.ProtoUtils.protoToString;
  */
 public final class MesosSchedulerSimulation {
     private static final Logger LOGGER = LoggerFactory.getLogger(MesosSchedulerSimulation.class);
+    private static final Marker RECEIVE_MARKER = MarkerFactory.getMarker("<<<");
+    private static final Marker SEND_MARKER = MarkerFactory.getMarker(">>>");
 
     @NotNull
     private final List<Protos.Call> callsReceived;
@@ -93,7 +97,7 @@ public final class MesosSchedulerSimulation {
      *                  the event will be sent by the server.
      */
     public MesosSchedulerSimulation(@NotNull final Observable<Protos.Event> events) {
-        this.callsReceived = newArrayList();
+        this.callsReceived = Collections.synchronizedList(new ArrayList<>());
         this.started = new AtomicBoolean(false);
         this.eventsCompletedLatch = new CountDownLatch(1);
         this.subscribedLatch = new CountDownLatch(1);
@@ -119,9 +123,10 @@ public final class MesosSchedulerSimulation {
                 try {
                     final ByteBufInputStream in = new ByteBufInputStream(buf);
                     final Protos.Call call = Protos.Call.parseFrom(in);
-                    callsReceived.add(call);
-                    sem.release();
-                    LOGGER.debug("Server received Call: {}", protoToString(call));
+                    if (callsReceived.add(call)) {
+                        sem.release();
+                    }
+                    LOGGER.debug(RECEIVE_MARKER, "Call: {}", protoToString(call));
                     if (call.getType() == Protos.Call.Type.SUBSCRIBE) {
                         if (subscribedLatch.getCount() == 0) {
                             final String message = "Only one event stream can be open per server";
@@ -140,11 +145,14 @@ public final class MesosSchedulerSimulation {
                         final MultipleAssignmentSubscription subscription = new MultipleAssignmentSubscription();
                         final Subscription actionSubscription = events
                             .doOnSubscribe(() -> LOGGER.debug("Event stream subscription active"))
-                            .doOnNext(e -> LOGGER.debug("Sending event: {}", protoToString(e)))
+                            .doOnNext(e -> LOGGER.debug(SEND_MARKER, "Event: {}", protoToString(e)))
                             .doOnError((t) -> LOGGER.error("Error while creating response", t))
                             .doOnCompleted(() -> {
                                 eventsCompletedLatch.countDown();
                                 LOGGER.debug("Sending events complete");
+                                if (!response.isCloseIssued()) {
+                                    response.close(true);
+                                }
                             })
                             .map(RecordIOUtils::eventToChunk)
                             .subscribe(bytes -> {
@@ -153,7 +161,7 @@ public final class MesosSchedulerSimulation {
                                     return;
                                 }
                                 try {
-                                    LOGGER.debug("Sending bytes: {}", Arrays.toString(bytes));
+                                    LOGGER.trace(SEND_MARKER, "bytes: {}", Arrays.toString(bytes));
                                     response.writeBytesAndFlush(bytes);
                                 } catch (Exception e) {
                                     subject.onError(e);
@@ -175,12 +183,14 @@ public final class MesosSchedulerSimulation {
     }
 
     /**
-     * An unmodifiable list of all {@link org.apache.mesos.v1.scheduler.Protos.Call Call}s received by the server.
-     * @return An unmodifiable list of all {@link org.apache.mesos.v1.scheduler.Protos.Call Call}s received by the server.
+     * An unmodifiable list of all {@link org.apache.mesos.v1.scheduler.Protos.Call Call}s received by the server up
+     * to this point.
+     * @return An unmodifiable list of all {@link org.apache.mesos.v1.scheduler.Protos.Call Call}s received by the
+     *         server up to this point.
      */
     @NotNull
     public List<Protos.Call> getCallsReceived() {
-        return Collections.unmodifiableList(callsReceived);
+        return Collections.unmodifiableList(new ArrayList<>(callsReceived));
     }
 
     /**
@@ -266,6 +276,7 @@ public final class MesosSchedulerSimulation {
      * @throws InterruptedException if the current thread is interrupted while waiting
      */
     public void awaitSubscribeCall() throws InterruptedException {
+        awaitCall();
         subscribedLatch.await();
     }
 
