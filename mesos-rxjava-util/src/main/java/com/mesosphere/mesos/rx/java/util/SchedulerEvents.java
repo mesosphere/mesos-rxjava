@@ -20,6 +20,7 @@ import com.google.common.collect.Lists;
 import com.google.protobuf.ByteString;
 import org.apache.mesos.v1.scheduler.Protos;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 /**
  * A set of factory methods that make {@link Protos.Event Event}s easier to create.
@@ -41,7 +42,7 @@ public final class SchedulerEvents {
      * {@link Protos.Event#getSubscribed() subscribed} set based on the provide parameters.
      */
     @NotNull
-    public static Protos.Event subscribed(@NotNull final String frameworkId, final int heartbeatIntervalSeconds) {
+    public static org.apache.mesos.v1.scheduler.Protos.Event subscribed(@NotNull final String frameworkId, final int heartbeatIntervalSeconds) {
         return Protos.Event.newBuilder()
             .setType(Protos.Event.Type.SUBSCRIBED)
             .setSubscribed(
@@ -162,6 +163,78 @@ public final class SchedulerEvents {
                     .setAgentId(agentId)
                     .setExecutorId(executorId)
                     .setData(data)
+            )
+            .build();
+    }
+
+    /**
+     * Utility method to more succinctly construct an {@link org.apache.mesos.v1.scheduler.Protos.Event Event} of type
+     * {@link org.apache.mesos.v1.scheduler.Protos.Event.Type#UPDATE UPDATE}.
+     *
+     * @param agentId        The {@link org.apache.mesos.v1.Protos.TaskStatus#getAgentId() agentId} to be set on the
+     *                       {@link org.apache.mesos.v1.Protos.TaskStatus TaskStatus}.
+     * @param executorId     The {@link org.apache.mesos.v1.Protos.TaskStatus#getExecutorId() executorId} to be set on the
+     *                       {@link org.apache.mesos.v1.Protos.TaskStatus TaskStatus}.
+     * @param taskId         The {@link org.apache.mesos.v1.Protos.TaskStatus#getTaskId() taskId} to be set on the
+     *                       {@link org.apache.mesos.v1.Protos.TaskStatus TaskStatus}.
+     * @param state
+     * @return  A {@link Protos.Call Call} with a configured {@link Protos.Call.Acknowledge Acknowledge}.
+     */
+    @NotNull
+    public static Protos.Event update(
+        @NotNull final String agentId,
+        @NotNull final String executorId,
+        @NotNull final String taskId,
+        @NotNull final org.apache.mesos.v1.Protos.TaskState state,
+        @Nullable final ByteString data
+    ) {
+        return update(
+            org.apache.mesos.v1.Protos.AgentID.newBuilder().setValue(agentId).build(),
+            org.apache.mesos.v1.Protos.ExecutorID.newBuilder().setValue(executorId).build(),
+            org.apache.mesos.v1.Protos.TaskID.newBuilder().setValue(taskId).build(),
+            state,
+            data
+        );
+    }
+
+    /**
+     * Utility method to more succinctly construct an {@link org.apache.mesos.v1.scheduler.Protos.Event Event} of type
+     * {@link org.apache.mesos.v1.scheduler.Protos.Event.Type#UPDATE UPDATE}.
+     *
+     * @param agentId        The {@link org.apache.mesos.v1.Protos.TaskStatus#getAgentId() agentId} to be set on the
+     *                       {@link org.apache.mesos.v1.Protos.TaskStatus TaskStatus}.
+     * @param executorId     The {@link org.apache.mesos.v1.Protos.TaskStatus#getExecutorId() executorId} to be set on the
+     *                       {@link org.apache.mesos.v1.Protos.TaskStatus TaskStatus}.
+     * @param taskId         The {@link org.apache.mesos.v1.Protos.TaskStatus#getTaskId() taskId} to be set on the
+     *                       {@link org.apache.mesos.v1.Protos.TaskStatus TaskStatus}.
+     * @return  A {@link Protos.Call Call} with a configured {@link Protos.Call.Acknowledge Acknowledge}.
+     */
+    @NotNull
+    public static Protos.Event update(
+        @NotNull final org.apache.mesos.v1.Protos.AgentID agentId,
+        @NotNull final org.apache.mesos.v1.Protos.ExecutorID executorId,
+        @NotNull final org.apache.mesos.v1.Protos.TaskID taskId,
+        @NotNull final org.apache.mesos.v1.Protos.TaskState state,
+        @Nullable final ByteString uuid
+    ) {
+        final org.apache.mesos.v1.Protos.TaskStatus.Builder builder = org.apache.mesos.v1.Protos.TaskStatus.newBuilder()
+            .setAgentId(agentId)
+            .setExecutorId(executorId)
+            .setTaskId(taskId)
+            .setState(state);
+
+        final org.apache.mesos.v1.Protos.TaskStatus status;
+        if (uuid != null) {
+            status = builder.setUuid(uuid).build();
+        } else {
+            status = builder.build();
+        }
+
+        return Protos.Event.newBuilder()
+            .setType(Protos.Event.Type.UPDATE)
+            .setUpdate(
+                Protos.Event.Update.newBuilder()
+                    .setStatus(status)
             )
             .build();
     }
