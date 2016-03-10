@@ -157,17 +157,14 @@ public final class MesosSchedulerSimulationScenariosTest {
 
         // SUBSCRIBED
         subject.onNext(events.get(0));
-        sub.awaitEvent();
-        final List<byte[]> onNextEvents = testSubscriber.getOnNextEvents();
-        assertThat(onNextEvents).hasSize(1);
-        assertThat(onNextEvents.get(0)).isEqualTo(expected.get(0));
 
         // HEARTBEAT
         subject.onNext(events.get(1));
-        sub.awaitEvent();
-        final List<byte[]> onNextEvents2 = testSubscriber.getOnNextEvents();
-        assertThat(onNextEvents2).hasSize(2);
-        assertThat(onNextEvents2.get(1)).isEqualTo(expected.get(1));
+        sub.awaitEvent(2);
+        final List<byte[]> onNextEvents = testSubscriber.getOnNextEvents();
+        assertThat(onNextEvents).hasSize(2);
+        assertThat(onNextEvents.get(0)).isEqualTo(expected.get(0));
+        assertThat(onNextEvents.get(1)).isEqualTo(expected.get(1));
 
         assertThat(sim.getCallsReceived()).hasSize(1);
         assertThat(sim.getCallsReceived()).contains(SUBSCRIBE);
