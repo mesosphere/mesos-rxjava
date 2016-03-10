@@ -60,7 +60,7 @@ public final class AwaitableEventSubscriberDecorator<T> extends Subscriber<T> {
 
     @Override
     public void onError(final Throwable e) {
-        LOGGER.trace("onError");
+        LOGGER.trace("onError", e);
         obs.onError(e);
         releaseAll();
         LOGGER.trace("--- (queueLength, available) = ({}, {})", sem.getQueueLength(), sem.availablePermits());

@@ -27,7 +27,7 @@
 
     <artifactId>mesos-rxjava-util</artifactId>
 
-    <name>Mesos RxJava Client :: Util</name>
+    <name>Mesos RxJava :: Util</name>
 
     <description>
         A set of common classes and types used across all modules of the project.
@@ -40,10 +40,6 @@
             modules, as such this module can not depend on any other module since it will create
             a cycle.
         -->
-        <dependency>
-            <groupId>org.apache.mesos</groupId>
-            <artifactId>mesos</artifactId>
-        </dependency>
         <dependency>
             <groupId>io.netty</groupId>
             <artifactId>netty-codec-http</artifactId>

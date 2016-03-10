@@ -17,13 +17,13 @@
 package com.mesosphere.mesos.rx.java.test.simulation;
 
 import com.mesosphere.mesos.rx.java.test.RecordIOUtils;
+import com.mesosphere.mesos.rx.java.util.MessageCodec;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufInputStream;
 import io.netty.handler.codec.http.HttpMethod;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import io.reactivex.netty.RxNetty;
 import io.reactivex.netty.protocol.http.server.HttpServer;
-import org.apache.mesos.v1.scheduler.Protos;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,7 +35,6 @@ import rx.subjects.PublishSubject;
 import rx.subjects.Subject;
 import rx.subscriptions.MultipleAssignmentSubscription;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -44,33 +43,31 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
-
-import static com.mesosphere.mesos.rx.java.util.ProtoUtils.protoToString;
+import java.util.function.Predicate;
 
 /**
  * {@code MesosSchedulerSimulation} provides a server implementing the same protocol defined by Apache Mesos for its
  * <a href="https://github.com/apache/mesos/blob/master/docs/scheduler-http-api.md">HTTP Scheduler API</a>.
  * The server has the following behavior:
  * <ol>
- *     <li>Run on a random port.</li>
- *     <li>Only one HTTP endpoint {@code /api/v1/scheduler}.</li>
- *     <li>Only supported method is {@code POST}.</li>
- *     <li>All requests sent to the server must specify {@code Content-Length} header.</li>
- *     <li>Only protobuf is supported ({@code Content-Type: application/x-protobuf} and {@code Accept: application/x-protobuf}).</li>
- *     <li>All messages sent to the server are interpreted as {@link Protos.Call Call}s.</li>
- *     <li>All messages sent from the server are {@link Protos.Event Event}s.</li>
- *     <li>Authentication and Authorization are completely ignored.</li>
- *     <li>The events to be sent by the server are represented by the {@link Observable} passed to the constructor.</li>
- *     <li>Server only supports one event stream, once that stream is complete a new server will need to be created.</li>
+ * <li>Run on a random port.</li>
+ * <li>Only one HTTP endpoint {@code /api/v1/scheduler}.</li>
+ * <li>Only supported method is {@code POST}.</li>
+ * <li>All requests sent to the server must specify {@code Content-Length} header.</li>
+ * <li>All messages sent to the server are interpreted as {@link Call}s.</li>
+ * <li>All messages sent from the server are {@link Event}s.</li>
+ * <li>Authentication and Authorization are completely ignored.</li>
+ * <li>The events to be sent by the server are represented by the {@link Observable} passed to the constructor.</li>
+ * <li>Server only supports one event stream, once that stream is complete a new server will need to be created.</li>
  * </ol>
  */
-public final class MesosSchedulerSimulation {
+public final class MesosSchedulerSimulation<Event, Call> {
     private static final Logger LOGGER = LoggerFactory.getLogger(MesosSchedulerSimulation.class);
     private static final Marker RECEIVE_MARKER = MarkerFactory.getMarker("<<<");
     private static final Marker SEND_MARKER = MarkerFactory.getMarker(">>>");
 
     @NotNull
-    private final List<Protos.Call> callsReceived;
+    private final List<Call> callsReceived;
 
     @NotNull
     private final HttpServer<ByteBuf, ByteBuf> server;
@@ -89,21 +86,30 @@ public final class MesosSchedulerSimulation {
 
     /**
      * Create a {@code MesosSchedulerSimulation} that will use {@code events} as the event stream to return to a
-     * well formed {@link Protos.Call.Type#SUBSCRIBE SUBSCRIBE} request.
+     * a client when {@code isSubscribePredicate} evaluates to {@code true}
      * <p>
      * The simulation server must be started using {@link #start()} before requests can be serviced by the server.
-     * @param events    The event stream to be returned by the server upon a well formed
-     *                  {@link Protos.Call.Type#SUBSCRIBE SUBSCRIBE} request. For each event sent to {@code events},
-     *                  the event will be sent by the server.
+     *
+     * @param events               The event stream to be returned by the server upon {@code isSubscribePredicate}
+     *                             evaluating to {@code true} For each {@link Event} sent to {@code events}, the event
+     *                             will be sent by the server.
+     * @param sendCodec            The {@link MessageCodec} to use to encode {@link Event}s sent by the server
+     * @param receiveCodec         The {@link MessageCodec} to use to decode {@link Call}s received by the server
+     * @param isSubscribePredicate The predicate used to determine if a {@link Call} is a "Subscribe" call
      */
-    public MesosSchedulerSimulation(@NotNull final Observable<Protos.Event> events) {
+    public MesosSchedulerSimulation(
+        @NotNull final Observable<Event> events,
+        @NotNull final MessageCodec<Event> sendCodec,
+        @NotNull final MessageCodec<Call> receiveCodec,
+        @NotNull final Predicate<Call> isSubscribePredicate
+    ) {
         this.callsReceived = Collections.synchronizedList(new ArrayList<>());
         this.started = new AtomicBoolean(false);
         this.eventsCompletedLatch = new CountDownLatch(1);
         this.subscribedLatch = new CountDownLatch(1);
         this.sem = new Semaphore(0);
         this.server = RxNetty.createHttpServer(0, (request, response) -> {
-            response.getHeaders().setHeader("Accept", "application/x-protobuf");
+            response.getHeaders().setHeader("Accept", receiveCodec.mediaType());
 
             if (!"/api/v1/scheduler".equals(request.getUri())) {
                 response.setStatus(HttpResponseStatus.NOT_FOUND);
@@ -111,7 +117,7 @@ public final class MesosSchedulerSimulation {
                 return response.close();
             }
             if (!HttpMethod.POST.equals(request.getHttpMethod())
-                || !"application/x-protobuf".equals(request.getHeaders().getHeader("Content-Type"))
+                || !receiveCodec.mediaType().equals(request.getHeaders().getHeader("Content-Type"))
                 || request.getHeaders().getContentLength() <= 0
                 ) {
                 response.setStatus(HttpResponseStatus.BAD_REQUEST);
@@ -120,62 +126,58 @@ public final class MesosSchedulerSimulation {
             }
 
             return request.getContent().flatMap(buf -> {
-                try {
-                    final ByteBufInputStream in = new ByteBufInputStream(buf);
-                    final Protos.Call call = Protos.Call.parseFrom(in);
-                    if (callsReceived.add(call)) {
-                        sem.release();
-                    }
-                    LOGGER.debug(RECEIVE_MARKER, "Call: {}", protoToString(call));
-                    if (call.getType() == Protos.Call.Type.SUBSCRIBE) {
-                        if (subscribedLatch.getCount() == 0) {
-                            final String message = "Only one event stream can be open per server";
-                            response.setStatus(HttpResponseStatus.CONFLICT);
-                            response.getHeaders().set("Content-Type", "test/plain;charset=utf-8");
-                            response.writeString(message);
-                            return response.close();
-                        }
-                        LOGGER.debug("Responding with event stream from source: {}", events);
-                        response.getHeaders().setTransferEncodingChunked();
-                        response.getHeaders().set("Content-Type", "application/x-protobuf");
-                        response.getHeaders().add("Cache-Control", "no-cache, no-store, max-age=0, must-revalidate");
-                        response.getHeaders().add("Pragma", "no-cache");
-
-                        final Subject<Void, Void> subject = PublishSubject.create();
-                        final MultipleAssignmentSubscription subscription = new MultipleAssignmentSubscription();
-                        final Subscription actionSubscription = events
-                            .doOnSubscribe(() -> LOGGER.debug("Event stream subscription active"))
-                            .doOnNext(e -> LOGGER.debug(SEND_MARKER, "Event: {}", protoToString(e)))
-                            .doOnError((t) -> LOGGER.error("Error while creating response", t))
-                            .doOnCompleted(() -> {
-                                eventsCompletedLatch.countDown();
-                                LOGGER.debug("Sending events complete");
-                                if (!response.isCloseIssued()) {
-                                    response.close(true);
-                                }
-                            })
-                            .map(RecordIOUtils::eventToChunk)
-                            .subscribe(bytes -> {
-                                if (!response.getChannel().isOpen()) {
-                                    subscription.unsubscribe();
-                                    return;
-                                }
-                                try {
-                                    LOGGER.trace(SEND_MARKER, "bytes: {}", Arrays.toString(bytes));
-                                    response.writeBytesAndFlush(bytes);
-                                } catch (Exception e) {
-                                    subject.onError(e);
-                                }
-                            });
-                        subscription.set(actionSubscription);
-                        subscribedLatch.countDown();
-                        return subject;
-                    } else {
-                        response.setStatus(HttpResponseStatus.ACCEPTED);
+                final ByteBufInputStream in = new ByteBufInputStream(buf);
+                final Call call = receiveCodec.decode(in);
+                if (callsReceived.add(call)) {
+                    sem.release();
+                }
+                LOGGER.debug(RECEIVE_MARKER, "Call: {}", receiveCodec.show(call));
+                if (isSubscribePredicate.test(call)) {
+                    if (subscribedLatch.getCount() == 0) {
+                        final String message = "Only one event stream can be open per server";
+                        response.setStatus(HttpResponseStatus.CONFLICT);
+                        response.getHeaders().set("Content-Type", "test/plain;charset=utf-8");
+                        response.writeString(message);
                         return response.close();
                     }
-                } catch (IOException e) {
-                    response.setStatus(HttpResponseStatus.BAD_REQUEST);
+                    LOGGER.debug("Responding with event stream from source: {}", events);
+                    response.getHeaders().setTransferEncodingChunked();
+                    response.getHeaders().set("Content-Type", sendCodec.mediaType());
+                    response.getHeaders().add("Cache-Control", "no-cache, no-store, max-age=0, must-revalidate");
+                    response.getHeaders().add("Pragma", "no-cache");
+
+                    final Subject<Void, Void> subject = PublishSubject.create();
+                    final MultipleAssignmentSubscription subscription = new MultipleAssignmentSubscription();
+                    final Subscription actionSubscription = events
+                        .doOnSubscribe(() -> LOGGER.debug("Event stream subscription active"))
+                        .doOnNext(e -> LOGGER.debug(SEND_MARKER, "Event: {}", sendCodec.show(e)))
+                        .doOnError((t) -> LOGGER.error("Error while creating response", t))
+                        .doOnCompleted(() -> {
+                            eventsCompletedLatch.countDown();
+                            LOGGER.debug("Sending events complete");
+                            if (!response.isCloseIssued()) {
+                                response.close(true);
+                            }
+                        })
+                        .map(sendCodec::encode)
+                        .map(RecordIOUtils::createChunk)
+                        .subscribe(bytes -> {
+                            if (!response.getChannel().isOpen()) {
+                                subscription.unsubscribe();
+                                return;
+                            }
+                            try {
+                                LOGGER.trace(SEND_MARKER, "bytes: {}", Arrays.toString(bytes));
+                                response.writeBytesAndFlush(bytes);
+                            } catch (Exception e) {
+                                subject.onError(e);
+                            }
+                        });
+                    subscription.set(actionSubscription);
+                    subscribedLatch.countDown();
+                    return subject;
+                } else {
+                    response.setStatus(HttpResponseStatus.ACCEPTED);
                     return response.close();
                 }
             });
@@ -183,18 +185,18 @@ public final class MesosSchedulerSimulation {
     }
 
     /**
-     * An unmodifiable list of all {@link org.apache.mesos.v1.scheduler.Protos.Call Call}s received by the server up
-     * to this point.
-     * @return An unmodifiable list of all {@link org.apache.mesos.v1.scheduler.Protos.Call Call}s received by the
-     *         server up to this point.
+     * An unmodifiable list of all {@link Call}s received by the server up to this point.
+     *
+     * @return An unmodifiable list of all {@link Call}s received by the server up to this point.
      */
     @NotNull
-    public List<Protos.Call> getCallsReceived() {
+    public List<Call> getCallsReceived() {
         return Collections.unmodifiableList(new ArrayList<>(callsReceived));
     }
 
     /**
      * Start the server and return the port that the server bound to.
+     *
      * @return The port the server bound to
      */
     public int start() {
@@ -205,6 +207,7 @@ public final class MesosSchedulerSimulation {
 
     /**
      * The port the server bound to.
+     *
      * @return The port the server bound to.
      */
     public int getServerPort() {
@@ -219,6 +222,7 @@ public final class MesosSchedulerSimulation {
      * Convenience method that can be used to block a thread to wait for all events to be sent from the server.
      * <p>
      * This method will block until {@code onCompleted} is invoked on the {@link Observable} passed to the constructor.
+     *
      * @throws InterruptedException if the current thread is interrupted while waiting
      * @see CountDownLatch#await()
      */
@@ -231,8 +235,9 @@ public final class MesosSchedulerSimulation {
      * a configured timeout.
      * <p>
      * This method will block until {@code onCompleted} is invoked on the {@link Observable} passed to the constructor.
-     * @param timeout       the maximum time to wait
-     * @param unit          the time unit of the timeout argument
+     *
+     * @param timeout the maximum time to wait
+     * @param unit    the time unit of the timeout argument
      * @return true if the count reached zero and false if the waiting time elapsed before the count reached zero
      * @throws InterruptedException if the current thread is interrupted while waiting
      * @see CountDownLatch#await(long, TimeUnit)
@@ -243,6 +248,7 @@ public final class MesosSchedulerSimulation {
 
     /**
      * Shutdown the server
+     *
      * @throws InterruptedException if the current thread is interrupted while waiting
      */
     public void shutdown() throws InterruptedException {
@@ -251,8 +257,9 @@ public final class MesosSchedulerSimulation {
     }
 
     /**
-     * Block the invoking thread until a {@link Protos.Call Call} is received by the server.
+     * Block the invoking thread until a {@link Call} is received by the server.
      * <p>
+     *
      * @throws InterruptedException if the current thread is interrupted while waiting
      */
     public void awaitCall() throws InterruptedException {
@@ -260,8 +267,9 @@ public final class MesosSchedulerSimulation {
     }
 
     /**
-     * Block the invoking thread until {@code callCount} {@link Protos.Call Call}s are received by the server.
+     * Block the invoking thread until {@code callCount} {@link Call}s are received by the server.
      * <p>
+     *
      * @param callCount The number of events to block and wait for
      * @throws InterruptedException if the current thread is interrupted while waiting
      */
@@ -270,9 +278,10 @@ public final class MesosSchedulerSimulation {
     }
 
     /**
-     * Block the invoking thread until a {@link Protos.Call Call} of type {@link Protos.Call.Type#SUBSCRIBE SUBSCRIBE}
-     * is received by the server.
+     * Block the invoking thread until a "Subscribe call" is received by the server as determined by the
+     * {@code isSubscribePredicate} provided to the constructor.
      * <p>
+     *
      * @throws InterruptedException if the current thread is interrupted while waiting
      */
     public void awaitSubscribeCall() throws InterruptedException {
@@ -281,11 +290,12 @@ public final class MesosSchedulerSimulation {
     }
 
     /**
-     * Block the invoking thread until a {@link Protos.Call Call} of type {@link Protos.Call.Type#SUBSCRIBE SUBSCRIBE}
-     * is received by the server.
+     * Block the invoking thread until a "Subscribe call" is received by the server as determined by the
+     * {@code isSubscribePredicate} provided to the constructor.
      * <p>
-     * @param timeout       the maximum time to wait
-     * @param unit          the time unit of the timeout argument
+     *
+     * @param timeout the maximum time to wait
+     * @param unit    the time unit of the timeout argument
      * @return true if the count reached zero and false if the waiting time elapsed before the count reached zero
      * @throws InterruptedException if the current thread is interrupted while waiting
      * @see CountDownLatch#await(long, TimeUnit)

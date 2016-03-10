@@ -17,7 +17,6 @@
 package com.mesosphere.mesos.rx.java.test;
 
 import com.google.common.base.Charsets;
-import org.apache.mesos.v1.scheduler.Protos;
 import org.jetbrains.annotations.NotNull;
 
 import static io.netty.util.internal.ObjectUtil.checkNotNull;
@@ -31,19 +30,6 @@ public final class RecordIOUtils {
     private static final int NEW_LINE_BYTE_SIZE = 1;
 
     private RecordIOUtils() {}
-
-    /**
-     * Encodes an {@link org.apache.mesos.v1.scheduler.Protos.Event Event} into a {@code byte[]} following
-     * the scheme used for RecordIO
-     * @param e    {@link org.apache.mesos.v1.scheduler.Protos.Event Event} to encode
-     * @return     A {@code byte[]} representing the RecordIO encoded bytes for {@code e}
-     */
-    @NotNull
-    public static byte[] eventToChunk(@NotNull final Protos.Event e) {
-        checkNotNull(e, "e must not be null");
-        final byte[] bytes = e.toByteArray();
-        return createChunk(bytes);
-    }
 
     @NotNull
     public static byte[] createChunk(@NotNull final byte[] bytes) {

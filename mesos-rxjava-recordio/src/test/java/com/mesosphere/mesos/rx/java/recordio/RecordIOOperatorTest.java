@@ -17,12 +17,12 @@
 package com.mesosphere.mesos.rx.java.recordio;
 
 import com.google.common.primitives.Bytes;
+import com.google.protobuf.AbstractMessageLite;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.mesosphere.mesos.rx.java.test.RecordIOUtils;
 import com.mesosphere.mesos.rx.java.util.CollectionUtils;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
-import com.mesosphere.mesos.rx.java.test.TestingProtos;
 import org.apache.mesos.v1.scheduler.Protos.Event;
 import org.jetbrains.annotations.NotNull;
 import org.junit.Test;
@@ -33,6 +33,7 @@ import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import static com.google.common.collect.Lists.newArrayList;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -53,7 +54,10 @@ public class RecordIOOperatorTest {
         TestingProtos.HEARTBEAT
     );
 
-    private static final List<byte[]> EVENT_CHUNKS = CollectionUtils.listMap(EVENT_PROTOS, RecordIOUtils::eventToChunk);
+    private static final List<byte[]> EVENT_CHUNKS = EVENT_PROTOS.stream()
+        .map(AbstractMessageLite::toByteArray)
+        .map(RecordIOUtils::createChunk)
+        .collect(Collectors.toList());
 
     @Test
     public void correctlyAbleToReadEventsFromEventsBinFile() throws Exception {
@@ -141,7 +145,10 @@ public class RecordIOOperatorTest {
             TestingProtos.HEARTBEAT,
             TestingProtos.OFFER
         );
-        final List<byte[]> eventChunks = CollectionUtils.listMap(subHbOffer, RecordIOUtils::eventToChunk);
+        final List<byte[]> eventChunks = subHbOffer.stream()
+            .map(AbstractMessageLite::toByteArray)
+            .map(RecordIOUtils::createChunk)
+            .collect(Collectors.toList());
         final List<ByteBuf> singleChunk = newArrayList(Unpooled.copiedBuffer(concatAllChunks(eventChunks)));
 
         final List<Event> events = runTestOnChunks(singleChunk);

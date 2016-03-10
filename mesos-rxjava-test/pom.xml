@@ -26,7 +26,7 @@
 
     <artifactId>mesos-rxjava-test</artifactId>
 
-    <name>Mesos RxJava Client :: Test Tools</name>
+    <name>Mesos RxJava :: Test Tools</name>
 
     <description>
         A set of tools to help when writing tests.
@@ -42,10 +42,6 @@
             <artifactId>mesos-rxjava-util</artifactId>
         </dependency>
         <dependency>
-            <groupId>org.apache.mesos</groupId>
-            <artifactId>mesos</artifactId>
-        </dependency>
-        <dependency>
             <groupId>io.reactivex</groupId>
             <artifactId>rxnetty</artifactId>
         </dependency>
@@ -57,6 +53,7 @@
             <groupId>io.netty</groupId>
             <artifactId>netty-codec-http</artifactId>
         </dependency>
+        <!--suppress MavenDuplicateDependenciesInspection we're changing the scope to compile instead of test -->
         <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>

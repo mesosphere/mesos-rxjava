@@ -20,7 +20,7 @@ import org.apache.mesos.MesosSchedulerDriver;
 import org.apache.mesos.Protos;
 import org.apache.mesos.Scheduler;
 import org.apache.mesos.SchedulerDriver;
-import com.mesosphere.mesos.rx.java.util.ProtoUtils;
+import com.mesosphere.mesos.rx.java.protobuf.ProtoUtils;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,8 +35,8 @@ import static java.util.stream.Collectors.groupingBy;
 import static org.apache.mesos.Protos.*;
 
 /**
- * A relatively simple Mesos framework that launches {@code sleep $SLEEP_SECONDS} tasks for offers it receives.
- * This framework uses the legacy libmesos API.
+ * A relatively simple Mesos framework that launches {@code sleep $SLEEP_SECONDS} tasks for offers it receives
+ * using the legacy libmesos API.
  * @see <a href="https://github.com/mesosphere/mesos-rxjava/blob/master/mesos-rxjava-example/mesos-rxjava-example-framework/src/main/java/com/mesosphere/mesos/rx/java/example/framework/sleepy/LegacySleepy.java">LegacySleepy.java</a>
  */
 public final class LegacySleepy implements Scheduler {

@@ -17,11 +17,12 @@
 package com.mesosphere.mesos.rx.java.example.framework.sleepy;
 
 import com.google.protobuf.ByteString;
+import com.mesosphere.mesos.rx.java.protobuf.ProtobufMessageCodecs;
+import com.mesosphere.mesos.rx.java.protobuf.SchedulerCalls;
 import com.mesosphere.mesos.rx.java.test.Async;
-import com.mesosphere.mesos.rx.java.test.TestingProtos;
 import com.mesosphere.mesos.rx.java.test.simulation.MesosSchedulerSimulation;
-import com.mesosphere.mesos.rx.java.util.SchedulerCalls;
 import org.apache.mesos.v1.scheduler.Protos;
+import org.jetbrains.annotations.NotNull;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
@@ -37,12 +38,17 @@ import java.util.stream.Collectors;
 
 import static com.google.common.collect.Lists.newArrayList;
 import static com.google.common.collect.Sets.newHashSet;
-import static com.mesosphere.mesos.rx.java.util.SchedulerEvents.*;
+import static com.mesosphere.mesos.rx.java.protobuf.SchedulerEvents.*;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static org.apache.mesos.v1.Protos.TaskState.TASK_RUNNING;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public final class SleepySimulationTest {
+
+    @NotNull
+    private static final Protos.Event HEARTBEAT = Protos.Event.newBuilder()
+        .setType(Protos.Event.Type.HEARTBEAT)
+        .build();
 
     @Rule
     public Timeout timeoutRule = new Timeout(15_000, MILLISECONDS);
@@ -51,14 +57,19 @@ public final class SleepySimulationTest {
     public Async async = new Async();
 
     private BehaviorSubject<Protos.Event> subject;
-    private MesosSchedulerSimulation sim;
+    private MesosSchedulerSimulation<Protos.Event, Protos.Call> sim;
 
     private URI uri;
 
     @Before
     public void setUp() throws Exception {
         subject = BehaviorSubject.create();
-        sim = new MesosSchedulerSimulation(subject);
+        sim = new MesosSchedulerSimulation<>(
+            subject,
+            ProtobufMessageCodecs.SCHEDULER_EVENT,
+            ProtobufMessageCodecs.SCHEDULER_CALL,
+            (e) -> e.getType() == Protos.Call.Type.SUBSCRIBE
+        );
         final int serverPort = sim.start();
         uri = URI.create(String.format("http://localhost:%d/api/v1/scheduler", serverPort));
     }
@@ -82,7 +93,7 @@ public final class SleepySimulationTest {
         assertThat(callsReceived1.get(0)).isEqualTo(subscribe);
 
         // send a heartbeat
-        subject.onNext(TestingProtos.HEARTBEAT);
+        subject.onNext(HEARTBEAT);
         // send an offer
         subject.onNext(resourceOffer("host-1", "offer-1", "agent-1", fwId, 4, 16 * 1024, 100 * 1024));
 

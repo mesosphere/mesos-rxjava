@@ -91,6 +91,7 @@ public final class UserAgentEntries {
      * The process of locating the specified artifact on the classpath will be evaluated relative to the class provided
      * when the resulting function is invoked (Typically when calling {@link UserAgent#UserAgent(Function[])}.
      *
+     * @param groupId    Group Id used to resolve the Maven artifact on the classpath.
      * @param artifactId Artifact Id used to resolve the Maven artifact on the classpath.
      * @return A function that will attempt to resolve the {@code Implementation-Version} of a Maven artifact.
      */
