@@ -18,15 +18,14 @@ package com.mesosphere.mesos.rx.java;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.net.HttpHeaders;
+import com.mesosphere.mesos.rx.java.recordio.RecordIOOperator;
 import com.mesosphere.mesos.rx.java.util.MessageCodec;
 import com.mesosphere.mesos.rx.java.util.UserAgent;
 import com.mesosphere.mesos.rx.java.util.UserAgentEntry;
 import io.netty.buffer.ByteBuf;
 import io.netty.handler.codec.http.HttpResponseStatus;
-import io.netty.util.CharsetUtil;
 import io.reactivex.netty.RxNetty;
 import io.reactivex.netty.protocol.http.client.*;
-import com.mesosphere.mesos.rx.java.recordio.RecordIOOperator;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -112,7 +111,7 @@ public final class MesosClient<Send, Receive> {
             .subscribeOn(Schedulers.io())
             .flatMap(verifyResponseOk(subscribe))
             .lift(new RecordIOOperator())
-            .observeOn(Schedulers.computation()) // TODO: Figure out how to move this before the lift
+            .observeOn(Schedulers.computation())
             /* Begin temporary back-pressure */
             .buffer(250, TimeUnit.MILLISECONDS)
             .flatMap(Observable::from)
@@ -143,20 +142,11 @@ public final class MesosClient<Send, Receive> {
             if (code == 200) {
                 return resp.getContent();
             } else {
-                //TODO: Figure out how to get these subscribe exceptions to propagate up so that the observable dies
                 final HttpResponseHeaders headers = resp.getHeaders();
                 final List<Map.Entry<String, String>> entries = headers.entries();
-                String errorMessage;
-                if (headers.getContentLength() > 0) {
-                    errorMessage = resp.getContent()
-                        .map(r -> r.toString(CharsetUtil.UTF_8))
-                        .toBlocking()
-                        .first();
-                } else {
-                    errorMessage = "";
-                }
+                resp.ignoreContent();
 
-                final MesosClientErrorContext context = new MesosClientErrorContext(code, errorMessage, entries);
+                final MesosClientErrorContext context = new MesosClientErrorContext(code, entries);
                 if (400 <= code && code < 500) {
                     throw new Mesos4xxException(subscription, context);
                 } else if (500 <= code && code < 600) {

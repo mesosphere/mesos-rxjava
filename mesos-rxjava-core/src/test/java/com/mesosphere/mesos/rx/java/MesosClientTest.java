@@ -18,12 +18,12 @@ package com.mesosphere.mesos.rx.java;
 
 import com.google.common.collect.Maps;
 import com.google.protobuf.ByteString;
+import com.mesosphere.mesos.rx.java.test.TestingProtos;
 import com.mesosphere.mesos.rx.java.util.SchedulerCalls;
 import com.mesosphere.mesos.rx.java.util.UserAgent;
 import io.netty.buffer.ByteBuf;
 import io.reactivex.netty.protocol.http.client.HttpClientRequest;
 import io.reactivex.netty.protocol.http.client.HttpRequestHeaders;
-import com.mesosphere.mesos.rx.java.test.TestingProtos;
 import org.apache.mesos.v1.scheduler.Protos;
 import org.jetbrains.annotations.NotNull;
 import org.junit.Test;
@@ -32,9 +32,8 @@ import rx.functions.Func1;
 
 import java.net.URI;
 import java.util.*;
-import java.util.regex.Pattern;
 
-import static com.mesosphere.mesos.rx.java.util.UserAgentEntries.*;
+import static com.mesosphere.mesos.rx.java.util.UserAgentEntries.literal;
 import static org.apache.mesos.v1.Protos.*;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -67,22 +66,6 @@ public final class MesosClientTest {
         final String ua = headers.get("User-Agent");
         assertThat(ua).startsWith(String.format("%s/%s", clientName, "latest"));
         assertThat(ua).contains("mesos-rxjava-core/");
-    }
-
-    @Test
-    public void testArtifactPropertyResolutionFunctionsCorrectly_gradle() throws Exception {
-        final UserAgent agent = new UserAgent(
-            userAgentEntryForGradleArtifact("rxnetty")
-        );
-        assertThat(agent.toString()).matches(Pattern.compile("rxnetty/\\d+\\.\\d+\\.\\d+"));
-    }
-
-    @Test
-    public void testArtifactPropertyResolutionFunctionsCorrectly_maven() throws Exception {
-        final UserAgent agent = new UserAgent(
-            userAgentEntryForMavenArtifact("io.netty", "netty-codec-http")
-        );
-        assertThat(agent.toString()).matches(Pattern.compile("netty-codec-http/\\d+\\.\\d+\\.\\d+\\.Final"));
     }
 
     @Test

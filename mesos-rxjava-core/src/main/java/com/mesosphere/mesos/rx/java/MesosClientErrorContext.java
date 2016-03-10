@@ -34,6 +34,10 @@ public final class MesosClientErrorContext {
     private final String message;
     private final List<Map.Entry<String, String>> headers;
 
+    public MesosClientErrorContext(final int statusCode, final List<Map.Entry<String, String>> headers) {
+        this(statusCode, "", headers);
+    }
+
     public MesosClientErrorContext(final int statusCode, final String message, final List<Map.Entry<String, String>> headers) {
         this.statusCode = statusCode;
         this.message = message;
