@@ -18,6 +18,8 @@ package com.mesosphere.mesos.rx.java.util;
 
 import org.jetbrains.annotations.NotNull;
 
+import java.io.InputStream;
+
 /**
  * A {@code MessageCodec<T>} defines how values of type {@code T} can be serialized to and deserialized from sequences
  * of bytes.
@@ -48,6 +50,17 @@ public interface MessageCodec<T> {
      */
     @NotNull
     T decode(@NotNull final byte[] bytes);
+
+    /**
+     * Deserialize the given byte array into a message.
+     *
+     * @param in The {@link InputStream} to deserialize the message from
+     * @return the deserialized message
+     * @throws RuntimeException If an error occurs when decoding {@code bytes}. If a checked exception is possible
+     *                          it should be wrapped in a RuntimeException.
+     */
+    @NotNull
+    T decode(@NotNull final InputStream in);
 
     /**
      * Returns the <a target="_blank" href="https://en.wikipedia.org/wiki/Media_type">IANA media type</a> of the serialized message

@@ -18,12 +18,12 @@ package com.mesosphere.mesos.rx.java.test.simulation;
 
 import com.mesosphere.mesos.rx.java.test.Async;
 import com.mesosphere.mesos.rx.java.test.RecordIOUtils;
-import com.mesosphere.mesos.rx.java.test.TestingProtos;
+import com.mesosphere.mesos.rx.java.test.StringMessageCodec;
+import com.mesosphere.mesos.rx.java.util.MessageCodec;
 import io.netty.buffer.ByteBuf;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import io.reactivex.netty.RxNetty;
 import io.reactivex.netty.protocol.http.client.*;
-import org.apache.mesos.v1.scheduler.Protos;
 import org.jetbrains.annotations.NotNull;
 import org.junit.Rule;
 import org.junit.Test;
@@ -33,6 +33,7 @@ import rx.Subscription;
 import rx.observers.TestSubscriber;
 import rx.subjects.BehaviorSubject;
 
+import java.io.InputStream;
 import java.net.URI;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -44,6 +45,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 public final class MesosSchedulerSimulationScenariosTest {
 
+    public static final String SUBSCRIBE = "subscribe";
+    public static final String SUBSCRIBED = "subscribed";
+    public static final String HEARTBEAT = "heartbeat";
+    public static final String OFFER_1 = "offer-1";
+    public static final String DECLINE = "decline";
     @Rule
     public Timeout timeoutRule = new Timeout(5000, MILLISECONDS);
 
@@ -52,20 +58,26 @@ public final class MesosSchedulerSimulationScenariosTest {
 
     @Test
     public void awaitServerCallsReceived() throws Exception {
-        final List<Protos.Event> events = newArrayList(
-            TestingProtos.SUBSCRIBED,
-            TestingProtos.HEARTBEAT,
-            TestingProtos.OFFER
+        final List<String> events = newArrayList(
+            SUBSCRIBED,
+            HEARTBEAT,
+            OFFER_1
         );
         final List<byte[]> expected = events.stream()
-            .map(RecordIOUtils::eventToChunk)
+            .map(StringMessageCodec.UTF8_STRING::encode)
+            .map(RecordIOUtils::createChunk)
             .collect(Collectors.toList());
 
-        final MesosSchedulerSimulation sim = new MesosSchedulerSimulation(Observable.from(events));
+        final MesosSchedulerSimulation<String, String> sim = new MesosSchedulerSimulation<>(
+            Observable.from(events),
+            StringMessageCodec.UTF8_STRING,
+            StringMessageCodec.UTF8_STRING,
+            SUBSCRIBE::equals
+        );
         final int serverPort = sim.start();
         final URI uri = URI.create(String.format("http://localhost:%d/api/v1/scheduler", serverPort));
         final HttpClient<ByteBuf, ByteBuf> httpClient = createClient(uri);
-        final HttpClientRequest<ByteBuf> subscribe = createRequest(uri, TestingProtos.SUBSCRIBE);
+        final HttpClientRequest<ByteBuf> subscribe = createRequest(uri, SUBSCRIBE);
 
         final Observable<byte[]> observable = httpClient.submit(subscribe)
             .flatMap(response -> {
@@ -86,7 +98,7 @@ public final class MesosSchedulerSimulationScenariosTest {
         async.run(() -> {
             sub.awaitEvent(3);
 
-            final HttpClientRequest<ByteBuf> decline = createRequest(uri, TestingProtos.DECLINE_OFFER);
+            final HttpClientRequest<ByteBuf> decline = createRequest(uri, DECLINE);
             final HttpClientResponse<ByteBuf> declineResult =
                 httpClient.submit(decline)
                     .toBlocking()
@@ -98,7 +110,7 @@ public final class MesosSchedulerSimulationScenariosTest {
         sim.awaitCall(2);
         assertThat(sim.getCallsReceived()).hasSize(2);
         assertThat(sim.getCallsReceived()).isEqualTo(
-            newArrayList(TestingProtos.SUBSCRIBE, TestingProtos.DECLINE_OFFER)
+            newArrayList(SUBSCRIBE, DECLINE)
         );
         assertThat(deepEquals(expected, testSubscriber.getOnNextEvents())).isTrue();
         subscription.unsubscribe();
@@ -107,12 +119,13 @@ public final class MesosSchedulerSimulationScenariosTest {
 
     @Test
     public void behaviorSubjectSubscribeHeartbeat() throws Exception {
-        final List<Protos.Event> events = newArrayList(
-            TestingProtos.SUBSCRIBED,
-            TestingProtos.HEARTBEAT
+        final List<String> events = newArrayList(
+            SUBSCRIBED,
+            HEARTBEAT
         );
         final List<byte[]> expected = events.stream()
-            .map(RecordIOUtils::eventToChunk)
+            .map(StringMessageCodec.UTF8_STRING::encode)
+            .map(RecordIOUtils::createChunk)
             .collect(Collectors.toList());
 
         /*
@@ -120,12 +133,17 @@ public final class MesosSchedulerSimulationScenariosTest {
          * to it's onNext method even if the Subject has not yet been subscribed to. A PublishSubject will only forward
          * events to it's subscriber without any buffering.
          */
-        final BehaviorSubject<Protos.Event> subject = BehaviorSubject.create();
-        final MesosSchedulerSimulation sim = new MesosSchedulerSimulation(subject);
+        final BehaviorSubject<String> subject = BehaviorSubject.create();
+        final MesosSchedulerSimulation<String, String> sim = new MesosSchedulerSimulation<>(
+            Observable.from(events),
+            StringMessageCodec.UTF8_STRING,
+            StringMessageCodec.UTF8_STRING,
+            SUBSCRIBE::equals
+        );
         final int serverPort = sim.start();
         final URI uri = URI.create(String.format("http://localhost:%d/api/v1/scheduler", serverPort));
         final HttpClient<ByteBuf, ByteBuf> httpClient = createClient(uri);
-        final HttpClientRequest<ByteBuf> request = createRequest(uri, TestingProtos.SUBSCRIBE);
+        final HttpClientRequest<ByteBuf> request = createRequest(uri, SUBSCRIBE);
 
         final Observable<byte[]> observable = openStream(httpClient, request);
 
@@ -139,20 +157,17 @@ public final class MesosSchedulerSimulationScenariosTest {
 
         // SUBSCRIBED
         subject.onNext(events.get(0));
-        sub.awaitEvent();
-        final List<byte[]> onNextEvents = testSubscriber.getOnNextEvents();
-        assertThat(onNextEvents).hasSize(1);
-        assertThat(onNextEvents.get(0)).isEqualTo(expected.get(0));
 
         // HEARTBEAT
         subject.onNext(events.get(1));
-        sub.awaitEvent();
-        final List<byte[]> onNextEvents2 = testSubscriber.getOnNextEvents();
-        assertThat(onNextEvents2).hasSize(2);
-        assertThat(onNextEvents2.get(1)).isEqualTo(expected.get(1));
+        sub.awaitEvent(2);
+        final List<byte[]> onNextEvents = testSubscriber.getOnNextEvents();
+        assertThat(onNextEvents).hasSize(2);
+        assertThat(onNextEvents.get(0)).isEqualTo(expected.get(0));
+        assertThat(onNextEvents.get(1)).isEqualTo(expected.get(1));
 
         assertThat(sim.getCallsReceived()).hasSize(1);
-        assertThat(sim.getCallsReceived()).contains(TestingProtos.SUBSCRIBE);
+        assertThat(sim.getCallsReceived()).contains(SUBSCRIBE);
         assertThat(deepEquals(expected, testSubscriber.getOnNextEvents())).isTrue();
         subscription.unsubscribe();
         sim.shutdown();
@@ -160,19 +175,25 @@ public final class MesosSchedulerSimulationScenariosTest {
 
     @Test
     public void observableSubscribeHeartbeat() throws Exception {
-        final List<Protos.Event> events = newArrayList(
-            TestingProtos.SUBSCRIBED,
-            TestingProtos.HEARTBEAT
+        final List<String> events = newArrayList(
+            SUBSCRIBED,
+            HEARTBEAT
         );
         final List<byte[]> expected = events.stream()
-            .map(RecordIOUtils::eventToChunk)
+            .map(StringMessageCodec.UTF8_STRING::encode)
+            .map(RecordIOUtils::createChunk)
             .collect(Collectors.toList());
 
-        final MesosSchedulerSimulation sim = new MesosSchedulerSimulation(Observable.from(events));
+        final MesosSchedulerSimulation<String, String> sim = new MesosSchedulerSimulation<>(
+            Observable.from(events),
+            StringMessageCodec.UTF8_STRING,
+            StringMessageCodec.UTF8_STRING,
+            SUBSCRIBE::equals
+        );
         final int serverPort = sim.start();
         final URI uri = URI.create(String.format("http://localhost:%d/api/v1/scheduler", serverPort));
         final HttpClient<ByteBuf, ByteBuf> httpClient = createClient(uri);
-        final HttpClientRequest<ByteBuf> request = createRequest(uri, TestingProtos.SUBSCRIBE);
+        final HttpClientRequest<ByteBuf> request = createRequest(uri, SUBSCRIBE);
 
         final Observable<byte[]> observable = openStream(httpClient, request);
 
@@ -187,7 +208,7 @@ public final class MesosSchedulerSimulationScenariosTest {
         // HEARTBEAT
         sub.awaitEvent(2);
         assertThat(sim.getCallsReceived()).hasSize(1);
-        assertThat(sim.getCallsReceived()).contains(TestingProtos.SUBSCRIBE);
+        assertThat(sim.getCallsReceived()).contains(SUBSCRIBE);
         assertThat(deepEquals(expected, testSubscriber.getOnNextEvents())).isTrue();
         subscription.unsubscribe();
         sim.shutdown();
@@ -195,13 +216,16 @@ public final class MesosSchedulerSimulationScenariosTest {
 
     @Test
     public void onlyOneSubscriptionPerServer() throws Exception {
-        final MesosSchedulerSimulation sim = new MesosSchedulerSimulation(
-            Observable.just(TestingProtos.SUBSCRIBED)
+        final MesosSchedulerSimulation<String, String> sim = new MesosSchedulerSimulation<>(
+            Observable.just(SUBSCRIBED),
+            StringMessageCodec.UTF8_STRING,
+            StringMessageCodec.UTF8_STRING,
+            SUBSCRIBE::equals
         );
         final int serverPort = sim.start();
         final URI uri = URI.create(String.format("http://localhost:%d/api/v1/scheduler", serverPort));
         final HttpClient<ByteBuf, ByteBuf> httpClient = createClient(uri);
-        final HttpClientRequest<ByteBuf> subscribe = createRequest(uri, TestingProtos.SUBSCRIBE);
+        final HttpClientRequest<ByteBuf> subscribe = createRequest(uri, SUBSCRIBE);
 
         final Observable<byte[]> observable = httpClient.submit(subscribe)
             .flatMap(response -> {
@@ -228,11 +252,74 @@ public final class MesosSchedulerSimulationScenariosTest {
 
         sim.awaitSendingEvents();
         sub.awaitEvent();
-        final List<byte[]> expected = newArrayList(RecordIOUtils.eventToChunk(TestingProtos.SUBSCRIBED));
+        final List<byte[]> expected = newArrayList(
+            RecordIOUtils.createChunk(StringMessageCodec.UTF8_STRING.encode(SUBSCRIBED))
+        );
         final List<byte[]> actual = testSubscriber.getOnNextEvents();
         assertThat(deepEquals(actual, expected)).isTrue();
         subscription.unsubscribe();
         sim.shutdown();
+    }
+
+    @Test
+    public void server400_unableToDecodeMessage() throws Exception {
+        final MessageCodec<String> receiveCodec = new MessageCodec<String>() {
+            @NotNull
+            @Override
+            public byte[] encode(@NotNull final String message) {
+                return new byte[0];
+            }
+
+            @NotNull
+            @Override
+            public String decode(@NotNull final byte[] bytes) {
+                throw new RuntimeException("not implemented");
+            }
+
+            @NotNull
+            @Override
+            public String decode(@NotNull final InputStream in) {
+                throw new RuntimeException("not implemented");
+            }
+
+            @NotNull
+            @Override
+            public String mediaType() {
+                return "*/*";
+            }
+
+            @NotNull
+            @Override
+            public String show(@NotNull final String message) {
+                return message;
+            }
+        };
+        final MesosSchedulerSimulation<String, String> sim = new MesosSchedulerSimulation<>(
+            Observable.just(SUBSCRIBED),
+            StringMessageCodec.UTF8_STRING,
+            receiveCodec,
+            SUBSCRIBE::equals
+        );
+        final int serverPort = sim.start();
+        final URI uri = URI.create(String.format("http://localhost:%d/api/v1/scheduler", serverPort));
+        final HttpClient<ByteBuf, ByteBuf> httpClient = RxNetty.<ByteBuf, ByteBuf>newHttpClientBuilder(uri.getHost(), uri.getPort())
+            .pipelineConfigurator(new HttpClientPipelineConfigurator<>())
+            .build();
+
+        final HttpClientRequest<ByteBuf> request = HttpClientRequest.createPost(uri.getPath())
+            .withHeader("Content-Type", StringMessageCodec.UTF8_STRING.mediaType())
+            .withHeader("Accept", StringMessageCodec.UTF8_STRING.mediaType())
+            .withContent("{\"isProto\":false}");
+
+        final HttpClientResponse<ByteBuf> response = httpClient.submit(request)
+            .toBlocking()
+            .last();
+
+        assertThat(response.getStatus()).isEqualTo(HttpResponseStatus.BAD_REQUEST);
+        final HttpResponseHeaders headers = response.getHeaders();
+        assertThat(headers.getHeader("Accept")).isEqualTo(receiveCodec.mediaType());
+
+        assertThat(sim.getCallsReceived()).hasSize(0);
     }
 
     @NotNull
@@ -245,7 +332,7 @@ public final class MesosSchedulerSimulationScenariosTest {
                 assertThat(response.getStatus()).isEqualTo(HttpResponseStatus.OK);
                 final HttpResponseHeaders headers = response.getHeaders();
                 assertThat(headers.getHeader("Transfer-Encoding")).isEqualTo("chunked");
-                assertThat(headers.getHeader("Accept")).isEqualTo("application/x-protobuf");
+                assertThat(headers.getHeader("Accept")).isEqualTo(StringMessageCodec.UTF8_STRING.mediaType());
 
                 return response.getContent();
             })
@@ -261,11 +348,11 @@ public final class MesosSchedulerSimulationScenariosTest {
     }
 
     @NotNull
-    private static HttpClientRequest<ByteBuf> createRequest(@NotNull final URI uri, @NotNull final Protos.Call subscribe) {
+    private static HttpClientRequest<ByteBuf> createRequest(@NotNull final URI uri, @NotNull final String subscribe) {
         return HttpClientRequest.createPost(uri.getPath())
-            .withHeader("Content-Type", "application/x-protobuf")
-            .withHeader("Accept", "application/x-protobuf")
-            .withContent(subscribe.toByteArray());
+            .withHeader("Content-Type", StringMessageCodec.UTF8_STRING.mediaType())
+            .withHeader("Accept", StringMessageCodec.UTF8_STRING.mediaType())
+            .withContent(StringMessageCodec.UTF8_STRING.encode(subscribe));
     }
 
     @NotNull

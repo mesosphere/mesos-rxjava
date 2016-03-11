@@ -24,7 +24,7 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static com.google.common.collect.Maps.newConcurrentMap;
-import static com.mesosphere.mesos.rx.java.util.ProtoUtils.protoToString;
+import static com.mesosphere.mesos.rx.java.protobuf.ProtoUtils.protoToString;
 
 final class State<FwId, TaskId, TaskState> {
     private static final Logger LOGGER = LoggerFactory.getLogger(State.class);

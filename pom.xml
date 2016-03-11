@@ -24,7 +24,7 @@
     <version>0.1.0-SNAPSHOT</version>
     <packaging>pom</packaging>
 
-    <name>Mesos RxJava Client</name>
+    <name>Mesos RxJava</name>
     <url>https://github.com/mesos/mesos-rxjava</url>
 
     <description>
@@ -86,11 +86,12 @@
     </properties>
 
     <modules>
-        <module>mesos-rxjava-core</module>
+        <module>mesos-rxjava-client</module>
         <module>mesos-rxjava-recordio</module>
         <module>mesos-rxjava-example</module>
         <module>mesos-rxjava-test</module>
         <module>mesos-rxjava-util</module>
+        <module>mesos-rxjava-protobuf-client</module>
     </modules>
 
     <distributionManagement>
@@ -106,7 +107,7 @@
             <!-- project libraries -->
             <dependency>
                 <groupId>com.mesosphere.mesos.rx.java</groupId>
-                <artifactId>mesos-rxjava-core</artifactId>
+                <artifactId>mesos-rxjava-client</artifactId>
                 <version>0.1.0-SNAPSHOT</version>
             </dependency>
             <dependency>
@@ -124,6 +125,11 @@
                 <artifactId>mesos-rxjava-test</artifactId>
                 <version>0.1.0-SNAPSHOT</version>
                 <scope>test</scope>
+            </dependency>
+            <dependency>
+                <groupId>com.mesosphere.mesos.rx.java</groupId>
+                <artifactId>mesos-rxjava-protobuf-client</artifactId>
+                <version>0.1.0-SNAPSHOT</version>
             </dependency>
 
             <!-- Rx Libraries -->

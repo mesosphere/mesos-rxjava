@@ -16,12 +16,11 @@
 
 package com.mesosphere.mesos.rx.java.test.simulation;
 
-import com.mesosphere.mesos.rx.java.test.TestingProtos;
+import com.mesosphere.mesos.rx.java.test.StringMessageCodec;
 import io.netty.buffer.ByteBuf;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import io.reactivex.netty.RxNetty;
 import io.reactivex.netty.protocol.http.client.*;
-import org.apache.mesos.v1.scheduler.Protos;
 import org.jetbrains.annotations.NotNull;
 import org.junit.After;
 import org.junit.Before;
@@ -29,12 +28,18 @@ import org.junit.Test;
 import rx.subjects.BehaviorSubject;
 
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 public final class MesosSchedulerSimulationTest {
 
-    private final MesosSchedulerSimulation mesosSchedulerSimulation = new MesosSchedulerSimulation(BehaviorSubject.create());
+    private final MesosSchedulerSimulation<String, String> mesosSchedulerSimulation = new MesosSchedulerSimulation<>(
+        BehaviorSubject.create(),
+        StringMessageCodec.UTF8_STRING,
+        StringMessageCodec.UTF8_STRING,
+        "subscribe"::equals
+    );
     private int serverPort;
 
     @Before
@@ -50,24 +55,24 @@ public final class MesosSchedulerSimulationTest {
     @Test
     public void server202_forValidCall() throws Exception {
         final URI uri = URI.create(String.format("http://localhost:%d/api/v1/scheduler", serverPort));
-        final HttpClientResponse<ByteBuf> response = sendCall(uri, TestingProtos.DECLINE_OFFER);
+        final HttpClientResponse<ByteBuf> response = sendCall(uri, "decline");
 
         assertThat(response.getStatus()).isEqualTo(HttpResponseStatus.ACCEPTED);
         final HttpResponseHeaders headers = response.getHeaders();
-        assertThat(headers.getHeader("Accept")).isEqualTo("application/x-protobuf");
+        assertThat(headers.getHeader("Accept")).isEqualTo(StringMessageCodec.UTF8_STRING.mediaType());
 
         assertThat(mesosSchedulerSimulation.getCallsReceived()).hasSize(1);
-        assertThat(mesosSchedulerSimulation.getCallsReceived()).contains(TestingProtos.DECLINE_OFFER);
+        assertThat(mesosSchedulerSimulation.getCallsReceived()).contains("decline");
     }
 
     @Test
     public void server404() throws Exception {
         final URI uri = URI.create(String.format("http://localhost:%d/something", serverPort));
-        final HttpClientResponse<ByteBuf> response = sendCall(uri, TestingProtos.DECLINE_OFFER);
+        final HttpClientResponse<ByteBuf> response = sendCall(uri, "decline");
 
         assertThat(response.getStatus()).isEqualTo(HttpResponseStatus.NOT_FOUND);
         final HttpResponseHeaders headers = response.getHeaders();
-        assertThat(headers.getHeader("Accept")).isEqualTo("application/x-protobuf");
+        assertThat(headers.getHeader("Accept")).isEqualTo(StringMessageCodec.UTF8_STRING.mediaType());
 
         assertThat(mesosSchedulerSimulation.getCallsReceived()).hasSize(0);
     }
@@ -80,7 +85,7 @@ public final class MesosSchedulerSimulationTest {
             .build();
 
         final HttpClientRequest<ByteBuf> request = HttpClientRequest.createGet(uri.getPath())
-            .withHeader("Accept", "application/x-protobuf");
+            .withHeader("Accept", StringMessageCodec.UTF8_STRING.mediaType());
 
         final HttpClientResponse<ByteBuf> response = httpClient.submit(request)
             .toBlocking()
@@ -88,7 +93,7 @@ public final class MesosSchedulerSimulationTest {
 
         assertThat(response.getStatus()).isEqualTo(HttpResponseStatus.BAD_REQUEST);
         final HttpResponseHeaders headers = response.getHeaders();
-        assertThat(headers.getHeader("Accept")).isEqualTo("application/x-protobuf");
+        assertThat(headers.getHeader("Accept")).isEqualTo(StringMessageCodec.UTF8_STRING.mediaType());
 
         assertThat(mesosSchedulerSimulation.getCallsReceived()).hasSize(0);
     }
@@ -100,7 +105,7 @@ public final class MesosSchedulerSimulationTest {
             .pipelineConfigurator(new HttpClientPipelineConfigurator<>())
             .build();
 
-        final byte[] data = TestingProtos.DECLINE_OFFER.toByteArray();
+        final byte[] data = StringMessageCodec.UTF8_STRING.encode("decline");
         final HttpClientRequest<ByteBuf> request = HttpClientRequest.createPost(uri.getPath())
             .withHeader("Content-Type", "application/octet-stream")
             .withHeader("Accept", "application/octet-stream")
@@ -112,7 +117,7 @@ public final class MesosSchedulerSimulationTest {
 
         assertThat(response.getStatus()).isEqualTo(HttpResponseStatus.BAD_REQUEST);
         final HttpResponseHeaders headers = response.getHeaders();
-        assertThat(headers.getHeader("Accept")).isEqualTo("application/x-protobuf");
+        assertThat(headers.getHeader("Accept")).isEqualTo(StringMessageCodec.UTF8_STRING.mediaType());
 
         assertThat(mesosSchedulerSimulation.getCallsReceived()).hasSize(0);
     }
@@ -125,8 +130,8 @@ public final class MesosSchedulerSimulationTest {
             .build();
 
         final HttpClientRequest<ByteBuf> request = HttpClientRequest.createPost(uri.getPath())
-            .withHeader("Content-Type", "application/x-protobuf")
-            .withHeader("Accept", "application/x-protobuf")
+            .withHeader("Content-Type", StringMessageCodec.UTF8_STRING.mediaType())
+            .withHeader("Accept", StringMessageCodec.UTF8_STRING.mediaType())
             .withContent(new byte[]{});
 
         final HttpClientResponse<ByteBuf> response = httpClient.submit(request)
@@ -135,44 +140,21 @@ public final class MesosSchedulerSimulationTest {
 
         assertThat(response.getStatus()).isEqualTo(HttpResponseStatus.BAD_REQUEST);
         final HttpResponseHeaders headers = response.getHeaders();
-        assertThat(headers.getHeader("Accept")).isEqualTo("application/x-protobuf");
-
-        assertThat(mesosSchedulerSimulation.getCallsReceived()).hasSize(0);
-    }
-
-    @Test
-    public void server400_notProtoBuf() throws Exception {
-        final URI uri = URI.create(String.format("http://localhost:%d/api/v1/scheduler", serverPort));
-        final HttpClient<ByteBuf, ByteBuf> httpClient = RxNetty.<ByteBuf, ByteBuf>newHttpClientBuilder(uri.getHost(), uri.getPort())
-            .pipelineConfigurator(new HttpClientPipelineConfigurator<>())
-            .build();
-
-        final HttpClientRequest<ByteBuf> request = HttpClientRequest.createPost(uri.getPath())
-            .withHeader("Content-Type", "application/x-protobuf")
-            .withHeader("Accept", "application/x-protobuf")
-            .withContent("{\"isProto\":false}");
-
-        final HttpClientResponse<ByteBuf> response = httpClient.submit(request)
-            .toBlocking()
-            .last();
-
-        assertThat(response.getStatus()).isEqualTo(HttpResponseStatus.BAD_REQUEST);
-        final HttpResponseHeaders headers = response.getHeaders();
-        assertThat(headers.getHeader("Accept")).isEqualTo("application/x-protobuf");
+        assertThat(headers.getHeader("Accept")).isEqualTo(StringMessageCodec.UTF8_STRING.mediaType());
 
         assertThat(mesosSchedulerSimulation.getCallsReceived()).hasSize(0);
     }
 
     @NotNull
-    private static HttpClientResponse<ByteBuf> sendCall(final URI uri, final Protos.Call call) {
+    private static HttpClientResponse<ByteBuf> sendCall(final URI uri, final String call) {
         final HttpClient<ByteBuf, ByteBuf> httpClient = RxNetty.<ByteBuf, ByteBuf>newHttpClientBuilder(uri.getHost(), uri.getPort())
             .pipelineConfigurator(new HttpClientPipelineConfigurator<>())
             .build();
 
-        final byte[] data = call.toByteArray();
+        final byte[] data = call.getBytes(StandardCharsets.UTF_8);
         final HttpClientRequest<ByteBuf> request = HttpClientRequest.createPost(uri.getPath())
-            .withHeader("Content-Type", "application/x-protobuf")
-            .withHeader("Accept", "application/x-protobuf")
+            .withHeader("Content-Type", StringMessageCodec.UTF8_STRING.mediaType())
+            .withHeader("Accept", StringMessageCodec.UTF8_STRING.mediaType())
             .withContent(data);
 
         return httpClient.submit(request)

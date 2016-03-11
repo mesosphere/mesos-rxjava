@@ -17,11 +17,11 @@
 package com.mesosphere.mesos.rx.java.example.framework.sleepy;
 
 import com.mesosphere.mesos.rx.java.MesosClientBuilder;
-import com.mesosphere.mesos.rx.java.MesosClientBuilders;
+import com.mesosphere.mesos.rx.java.protobuf.ProtobufMesosClientBuilder;
 import com.mesosphere.mesos.rx.java.SinkOperation;
 import com.mesosphere.mesos.rx.java.SinkOperations;
-import com.mesosphere.mesos.rx.java.util.ProtoUtils;
-import com.mesosphere.mesos.rx.java.util.SchedulerCalls;
+import com.mesosphere.mesos.rx.java.protobuf.ProtoUtils;
+import com.mesosphere.mesos.rx.java.protobuf.SchedulerCalls;
 import org.apache.mesos.v1.Protos.*;
 import org.apache.mesos.v1.scheduler.Protos.Call;
 import org.apache.mesos.v1.scheduler.Protos.Event;
@@ -38,8 +38,8 @@ import java.util.UUID;
 
 import static com.google.common.collect.Lists.newArrayList;
 import static com.mesosphere.mesos.rx.java.SinkOperations.sink;
-import static com.mesosphere.mesos.rx.java.util.SchedulerCalls.decline;
-import static com.mesosphere.mesos.rx.java.util.SchedulerCalls.subscribe;
+import static com.mesosphere.mesos.rx.java.protobuf.SchedulerCalls.decline;
+import static com.mesosphere.mesos.rx.java.protobuf.SchedulerCalls.subscribe;
 import static com.mesosphere.mesos.rx.java.util.UserAgentEntries.userAgentEntryForMavenArtifact;
 import static java.util.stream.Collectors.groupingBy;
 import static rx.Observable.from;
@@ -81,7 +81,7 @@ public final class Sleepy {
         final FrameworkID frameworkID = FrameworkID.newBuilder().setValue(fwId).build();
         final State<FrameworkID, TaskID, TaskState> stateObject = new State<>(frameworkID, cpusPerTask, 32);
 
-        final MesosClientBuilder<Call, Event> clientBuilder = MesosClientBuilders.schedulerUsingProtos()
+        final MesosClientBuilder<Call, Event> clientBuilder = ProtobufMesosClientBuilder.schedulerUsingProtos()
             .mesosUri(mesosUri)
             .applicationUserAgentEntry(userAgentEntryForMavenArtifact("com.mesosphere.mesos.rx.java.example", "mesos-rxjava-example"));
 

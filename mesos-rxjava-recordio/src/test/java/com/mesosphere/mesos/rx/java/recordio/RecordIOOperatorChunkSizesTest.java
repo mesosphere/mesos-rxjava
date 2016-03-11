@@ -20,7 +20,6 @@ import com.mesosphere.mesos.rx.java.test.RecordIOUtils;
 import com.mesosphere.mesos.rx.java.util.CollectionUtils;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
-import com.mesosphere.mesos.rx.java.test.TestingProtos;
 import org.apache.mesos.v1.scheduler.Protos.Event;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -52,7 +51,7 @@ public final class RecordIOOperatorChunkSizesTest {
 
     @Test
     public void test() {
-        final byte[] chunk = RecordIOUtils.eventToChunk(TestingProtos.SUBSCRIBED);
+        final byte[] chunk = RecordIOUtils.createChunk(TestingProtos.SUBSCRIBED.toByteArray());
         final List<byte[]> bytes = RecordIOOperatorTest.partitionIntoArraysOfSize(chunk, chunkSize);
         final List<ByteBuf> chunks = CollectionUtils.listMap(bytes, Unpooled::copiedBuffer);
 
