@@ -19,7 +19,7 @@ package com.mesosphere.mesos.rx.java.test;
 import com.google.common.base.Charsets;
 import org.jetbrains.annotations.NotNull;
 
-import static io.netty.util.internal.ObjectUtil.checkNotNull;
+import static com.google.common.base.Preconditions.checkNotNull;
 
 /**
  * A set of utilities for dealing with the RecordIO format.
