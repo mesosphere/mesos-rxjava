@@ -29,7 +29,7 @@ import java.util.concurrent.TimeUnit;
 public final class AwaitableEventSubscriberDecoratorTest {
 
     @Rule
-    public Timeout timeout = new Timeout(500, TimeUnit.MILLISECONDS);
+    public Timeout timeout = new Timeout(1000, TimeUnit.MILLISECONDS);
 
     @Rule
     public Async async = new Async();
