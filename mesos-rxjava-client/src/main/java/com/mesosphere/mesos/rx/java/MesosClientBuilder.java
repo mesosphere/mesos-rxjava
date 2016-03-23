@@ -117,7 +117,7 @@ public final class MesosClientBuilder<Send, Receive> {
     }
 
     /**
-     * @param subscribe     The {@code SUBSCRIBE} message to be sent to Mesos to open the event stream.
+     * @param subscribe     The {@code SUBSCRIBE} to be sent to Mesos when opening the event stream.
      * @return this builder (allowing for further chained calls)
      */
     @NotNull
@@ -145,8 +145,10 @@ public final class MesosClientBuilder<Send, Receive> {
      * events -> {
      *     final Observable<Optional<SinkOperation<Call>>> errorLogger = events
      *         .filter(event -> event.getType() == Event.Type.UPDATE && event.getUpdate().getStatus().getState() == TaskState.TASK_ERROR)
-     *         .doOnNext(event -> LOGGER.warn("Task Error: {}", event))
-     *         .map(event -> Optional.empty());
+     *         .doOnNext(e -> LOGGER.warn("Task Error: {}", ProtoUtils.protoToString(e)))
+     *         .map(e -> Optional.empty());
+     *
+     *     return errorLogger;
      * }
      * }</pre>
      * @param streamProcessing    The function that will be woven between the event spout and the call sink
