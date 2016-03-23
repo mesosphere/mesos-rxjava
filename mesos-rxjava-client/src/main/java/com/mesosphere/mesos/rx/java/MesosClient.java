@@ -50,6 +50,7 @@ import static rx.Observable.just;
 
 /**
  * This class performs the necessary work to create an {@link Observable} of {@code Receive} from Mesos'
+ * HTTP APIs, one of which is the
  * <a target="_blank" href="https://github.com/apache/mesos/blob/master/docs/scheduler-http-api.md">HTTP Scheduler API</a>
  * @param <Send>       The type of Objects to be sent to Mesos
  * @param <Receive>    The type of Objects to expect from Mesos
@@ -103,6 +104,16 @@ public final class MesosClient<Send, Receive> {
         createPost = curryCreatePost(mesosUri, sendCodec, receiveCodec, userAgent);
     }
 
+    /**
+     * Sends the subscribe call to Mesos and starts processing the stream of {@code Receive} events.
+     * The {@code streamProcessor} function provided to the constructor will be applied to the stream of events
+     * received from Mesos.
+     * <p>
+     * The stream processing will then process any {@link SinkOperation} that should be sent to Mesos.
+     * @return The subscription representing the processing of the event stream. This subscription can then be used
+     * to block the invoking thread using {@link AwaitableSubscription#await()} (For example to block a main thread
+     * from exiting while events are being processed.)
+     */
     @NotNull
     public AwaitableSubscription openStream() {
         final Observable<Receive> receives = createPost.call(subscribe)
