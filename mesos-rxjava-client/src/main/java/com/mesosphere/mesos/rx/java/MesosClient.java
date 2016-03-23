@@ -17,13 +17,13 @@
 package com.mesosphere.mesos.rx.java;
 
 import com.google.common.annotations.VisibleForTesting;
-import com.google.common.net.HttpHeaders;
 import com.mesosphere.mesos.rx.java.recordio.RecordIOOperator;
 import com.mesosphere.mesos.rx.java.util.MessageCodec;
 import com.mesosphere.mesos.rx.java.util.UserAgent;
 import com.mesosphere.mesos.rx.java.util.UserAgentEntry;
 import io.netty.buffer.ByteBuf;
 import io.netty.handler.codec.http.HttpResponseStatus;
+import io.netty.handler.codec.http.HttpHeaders;
 import io.reactivex.netty.RxNetty;
 import io.reactivex.netty.protocol.http.client.*;
 import org.jetbrains.annotations.NotNull;
@@ -289,7 +289,7 @@ public final class MesosClient<Send, Receive> {
             if (userInfo != null) {
                 //Won't actually work until https://issues.apache.org/jira/browse/MESOS-3923 is fixed
                 request = request.withHeader(
-                    HttpHeaders.AUTHORIZATION,
+                    HttpHeaders.Names.AUTHORIZATION,
                     String.format("Basic %s", Base64.getEncoder().encodeToString(userInfo.getBytes()))
                 );
             }

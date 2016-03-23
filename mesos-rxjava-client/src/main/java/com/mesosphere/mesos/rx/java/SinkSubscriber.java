@@ -18,7 +18,6 @@ package com.mesosphere.mesos.rx.java;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.handler.codec.http.HttpResponseStatus;
-import io.netty.util.CharsetUtil;
 import io.reactivex.netty.protocol.http.client.HttpClient;
 import io.reactivex.netty.protocol.http.client.HttpClientRequest;
 import io.reactivex.netty.protocol.http.client.HttpResponseHeaders;
@@ -30,6 +29,7 @@ import rx.Subscriber;
 import rx.exceptions.Exceptions;
 import rx.functions.Func1;
 
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 
@@ -66,7 +66,7 @@ final class SinkSubscriber<Send> extends Subscriber<SinkOperation<Send>> {
                     } else {
                         resp.getContent()
                             .map(buf -> {
-                                final String errorMessage = buf.toString(CharsetUtil.UTF_8);
+                                final String errorMessage = buf.toString(StandardCharsets.UTF_8);
                                 final HttpResponseHeaders headers = resp.getHeaders();
                                 final List<Map.Entry<String, String>> entries = headers.entries();
                                 return new MesosClientErrorContext(code, errorMessage, entries);
