@@ -101,7 +101,7 @@ public final class MesosClient<Send, Receive> {
             userAgentEntryForGradleArtifact("rxnetty")
         );
 
-        httpClient = RxNetty.<ByteBuf, ByteBuf>newHttpClientBuilder(mesosUri.getHost(), mesosUri.getPort())
+        httpClient = RxNetty.<ByteBuf, ByteBuf>newHttpClientBuilder(mesosUri.getHost(), getPort(mesosUri))
             .withName(userAgent.getEntries().get(0).getName())
             .pipelineConfigurator(new HttpClientPipelineConfigurator<>())
             .build();
@@ -183,6 +183,23 @@ public final class MesosClient<Send, Receive> {
                 }
             }
         };
+    }
+
+    @VisibleForTesting
+    static int getPort(@NotNull final URI uri) {
+        final int uriPort = uri.getPort();
+        if (uriPort > 0) {
+            return uriPort;
+        } else {
+            switch (uri.getScheme()) {
+                case "http":
+                    return 80;
+                case "https":
+                    return 443;
+                default:
+                    throw new IllegalArgumentException("URI Scheme must be http or https");
+            }
+        }
     }
 
     /**
