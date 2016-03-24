@@ -22,8 +22,8 @@ import com.mesosphere.mesos.rx.java.util.MessageCodec;
 import com.mesosphere.mesos.rx.java.util.UserAgent;
 import com.mesosphere.mesos.rx.java.util.UserAgentEntry;
 import io.netty.buffer.ByteBuf;
-import io.netty.handler.codec.http.HttpResponseStatus;
 import io.netty.handler.codec.http.HttpHeaders;
+import io.netty.handler.codec.http.HttpResponseStatus;
 import io.reactivex.netty.RxNetty;
 import io.reactivex.netty.protocol.http.client.*;
 import org.jetbrains.annotations.NotNull;
@@ -34,7 +34,6 @@ import rx.Subscriber;
 import rx.Subscription;
 import rx.exceptions.Exceptions;
 import rx.functions.Func1;
-import rx.schedulers.Schedulers;
 
 import java.net.URI;
 import java.util.Base64;
@@ -42,6 +41,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 
 import static com.mesosphere.mesos.rx.java.util.UserAgentEntries.userAgentEntryForGradleArtifact;
@@ -58,6 +58,8 @@ import static rx.Observable.just;
  */
 public final class MesosClient<Send, Receive> {
     private static final Logger LOGGER = LoggerFactory.getLogger(MesosClient.class);
+
+    private static final String MESOS_STREAM_ID = "Mesos-Stream-Id";
 
     @NotNull
     private final ExecutorService exec = Executors.newSingleThreadExecutor(r -> new Thread(r, "stream-monitor-thread"));
@@ -76,6 +78,9 @@ public final class MesosClient<Send, Receive> {
     @NotNull
     @VisibleForTesting
     final Func1<Send, Observable<HttpClientRequest<ByteBuf>>> createPost;
+
+    @NotNull
+    private final AtomicReference<String> mesosStreamId = new AtomicReference<>(null);
 
     MesosClient(
         @NotNull final URI mesosUri,
@@ -101,7 +106,7 @@ public final class MesosClient<Send, Receive> {
             .pipelineConfigurator(new HttpClientPipelineConfigurator<>())
             .build();
 
-        createPost = curryCreatePost(mesosUri, sendCodec, receiveCodec, userAgent);
+        createPost = curryCreatePost(mesosUri, sendCodec, receiveCodec, userAgent, mesosStreamId);
     }
 
     /**
@@ -118,10 +123,10 @@ public final class MesosClient<Send, Receive> {
     public AwaitableSubscription openStream() {
         final Observable<Receive> receives = createPost.call(subscribe)
             .flatMap(httpClient::submit)
-            .subscribeOn(Schedulers.io())
-            .flatMap(verifyResponseOk(subscribe))
+            .subscribeOn(Rx.io())
+            .flatMap(verifyResponseOk(subscribe, mesosStreamId))
             .lift(new RecordIOOperator())
-            .observeOn(Schedulers.computation())
+            .observeOn(Rx.compute())
             /* Begin temporary back-pressure */
             .buffer(250, TimeUnit.MILLISECONDS)
             .flatMap(Observable::from)
@@ -144,12 +149,20 @@ public final class MesosClient<Send, Receive> {
     }
 
     @NotNull
-    private Func1<HttpClientResponse<ByteBuf>, Observable<ByteBuf>> verifyResponseOk(final @NotNull Send subscription) {
+    @VisibleForTesting
+    static <Send> Func1<HttpClientResponse<ByteBuf>, Observable<ByteBuf>> verifyResponseOk(
+        @NotNull final Send subscription,
+        @NotNull final AtomicReference<String> mesosStreamId
+    ) {
         return resp -> {
             final HttpResponseStatus status = resp.getStatus();
             final int code = status.code();
 
             if (code == 200) {
+                if (resp.getHeaders().contains(MESOS_STREAM_ID)) {
+                    final String streamId = resp.getHeaders().get(MESOS_STREAM_ID);
+                    mesosStreamId.compareAndSet(null, streamId);
+                }
                 return resp.getContent();
             } else {
                 final HttpResponseHeaders headers = resp.getHeaders();
@@ -181,7 +194,7 @@ public final class MesosClient<Send, Receive> {
         @NotNull
         private final Subscription subscription;
 
-        public ObservableAwaitableSubscription(
+        private ObservableAwaitableSubscription(
             @NotNull final Observable<Optional<Throwable>> observable,
             @NotNull final Subscription subscription
         ) {
@@ -222,7 +235,7 @@ public final class MesosClient<Send, Receive> {
         @NotNull
         private final BlockingQueue<Optional<Throwable>> queue;
 
-        public SubscriberDecorator(@NotNull final Subscriber<T> delegate) {
+        SubscriberDecorator(@NotNull final Subscriber<T> delegate) {
             this.delegate = delegate;
             queue = new LinkedBlockingDeque<>();
         }
@@ -276,7 +289,8 @@ public final class MesosClient<Send, Receive> {
         @NotNull final URI mesosUri,
         @NotNull final MessageCodec<Send> sendCodec,
         @NotNull final MessageCodec<Receive> receiveCodec,
-        @NotNull final UserAgent userAgent
+        @NotNull final UserAgent userAgent,
+        @NotNull final AtomicReference<String> mesosStreamId
     ) {
         return (Send s) -> {
             final byte[] bytes = sendCodec.encode(s);
@@ -284,6 +298,11 @@ public final class MesosClient<Send, Receive> {
                 .withHeader("User-Agent", userAgent.toString())
                 .withHeader("Content-Type", sendCodec.mediaType())
                 .withHeader("Accept", receiveCodec.mediaType());
+
+            final String streamId = mesosStreamId.get();
+            if (streamId != null) {
+                request = request.withHeader(MESOS_STREAM_ID, streamId);
+            }
 
             final String userInfo = mesosUri.getUserInfo();
             if (userInfo != null) {
