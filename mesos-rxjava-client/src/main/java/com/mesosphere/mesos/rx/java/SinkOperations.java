@@ -35,8 +35,8 @@ public final class SinkOperations {
     /**
      * Creates a new {@link SinkOperation}.
      * @param thing          The message to be sent to Mesos.
-     * @param onCompleted    The callback to be invoked if the message is successfully sent to Mesos.
-     * @param onError        The callback to be invoked if an error occurred while sending to Mesos.
+     * @param onCompleted    The callback to be invoked upon a 202 response from Mesos.
+     * @param onError        The callback to be invoked upon a 4xx or 5xx response from Mesos.
      * @param <T>            The type of the message to be sent to Mesos.
      * @return  A new {@link SinkOperation} that can be sent to Mesos.
      */
@@ -51,7 +51,7 @@ public final class SinkOperations {
     /**
      * Creates a new {@link SinkOperation}.
      * @param thing          The message to be sent to Mesos.
-     * @param onCompleted    The callback to be invoked if the message is successfully sent to Mesos.
+     * @param onCompleted    The callback to be invoked upon a 202 response from Mesos.
      * @param <T>            The type of the message to be sent to Mesos.
      * @return  A new {@link SinkOperation} that can be sent to Mesos.
      */
@@ -66,7 +66,7 @@ public final class SinkOperations {
     /**
      * Creates a new {@link SinkOperation}.
      * @param thing          The message to be sent to Mesos.
-     * @param onError        The callback to be invoked if an error occurred while sending to Mesos.
+     * @param onError        The callback to be invoked upon a 4xx or 5xx response from Mesos.
      * @param <T>            The type of the message to be sent to Mesos.
      * @return  A new {@link SinkOperation} that can be sent to Mesos.
      */
@@ -92,8 +92,8 @@ public final class SinkOperations {
     /**
      * Creates a new {@link SinkOperation}.
      * @param thing          The message to be sent to Mesos.
-     * @param onCompleted    The callback to be invoked if the message is successfully sent to Mesos.
-     * @param onError        The callback to be invoked if an error occurred while sending to Mesos.
+     * @param onCompleted    The callback to be invoked upon a 202 response from Mesos.
+     * @param onError        The callback to be invoked upon a 4xx or 5xx response from Mesos.
      * @param <T>            The type of the message to be sent to Mesos.
      * @return  A new {@link SinkOperation} that can be sent to Mesos.
      * @see #create(Object, Action0, Action1)
@@ -110,7 +110,7 @@ public final class SinkOperations {
     /**
      * Creates a new {@link SinkOperation}.
      * @param thing          The message to be sent to Mesos.
-     * @param onCompleted    The callback to be invoked if the message is successfully sent to Mesos.
+     * @param onCompleted    The callback to be invoked upon a 202 response from Mesos.
      * @param <T>            The type of the message to be sent to Mesos.
      * @return  A new {@link SinkOperation} that can be sent to Mesos.
      * @see #create(Object, Action0)
@@ -126,7 +126,7 @@ public final class SinkOperations {
     /**
      * Creates a new {@link SinkOperation}.
      * @param thing          The message to be sent to Mesos.
-     * @param onError        The callback to be invoked if an error occurred while sending to Mesos.
+     * @param onError        The callback to be invoked upon a 4xx or 5xx response from Mesos.
      * @param <T>            The type of the message to be sent to Mesos.
      * @return  A new {@link SinkOperation} that can be sent to Mesos.
      * @see #create(Object, Action1)
