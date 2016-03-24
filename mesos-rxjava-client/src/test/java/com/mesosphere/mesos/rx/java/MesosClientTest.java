@@ -20,7 +20,12 @@ import com.google.common.collect.Maps;
 import com.mesosphere.mesos.rx.java.test.StringMessageCodec;
 import com.mesosphere.mesos.rx.java.util.UserAgent;
 import io.netty.buffer.ByteBuf;
+import io.netty.handler.codec.http.DefaultHttpResponse;
+import io.netty.handler.codec.http.HttpResponseStatus;
+import io.netty.handler.codec.http.HttpVersion;
+import io.reactivex.netty.protocol.http.UnicastContentSubject;
 import io.reactivex.netty.protocol.http.client.HttpClientRequest;
+import io.reactivex.netty.protocol.http.client.HttpClientResponse;
 import io.reactivex.netty.protocol.http.client.HttpRequestHeaders;
 import org.jetbrains.annotations.NotNull;
 import org.junit.Test;
@@ -29,6 +34,8 @@ import rx.functions.Func1;
 
 import java.net.URI;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static com.mesosphere.mesos.rx.java.util.UserAgentEntries.literal;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -44,7 +51,7 @@ public final class MesosClientTest {
             .mesosUri(URI.create("http://localhost:12345"))
             .applicationUserAgentEntry(literal(clientName, "latest"))
             .subscribe("subscribe")
-            .processStream(events -> events.map(e -> Optional.empty()))
+            .processStream(events -> events.map(e -> Optional.<SinkOperation<String>>empty()))
             .build();
 
         final HttpClientRequest<ByteBuf> request = client.createPost
@@ -67,7 +74,8 @@ public final class MesosClientTest {
             StringMessageCodec.UTF8_STRING,
             new UserAgent(
                 literal("testing", "latest")
-            )
+            ),
+            new AtomicReference<>(null)
         );
 
         final HttpClientRequest<ByteBuf> request = createPost.call("something")
@@ -85,7 +93,8 @@ public final class MesosClientTest {
             StringMessageCodec.UTF8_STRING,
             new UserAgent(
                 literal("testing", "latest")
-            )
+            ),
+            new AtomicReference<>(null)
         );
 
         final HttpClientRequest<ByteBuf> request = createPost.call("something")
@@ -100,6 +109,94 @@ public final class MesosClientTest {
         final String base64UserPass = authorization.substring("Basic ".length());
         final String userPass = new String(Base64.getDecoder().decode(base64UserPass));
         assertThat(userPass).isEqualTo("testuser:testpassword");
+    }
+
+    @Test
+    public void testMesosStreamIdAddedToRequestWhenNonNull() throws Exception {
+        final Func1<String, Observable<HttpClientRequest<ByteBuf>>> createPost = MesosClient.curryCreatePost(
+            URI.create("http://localhost:12345/api/v1/scheduler"),
+            StringMessageCodec.UTF8_STRING,
+            StringMessageCodec.UTF8_STRING,
+            new UserAgent(
+                literal("testing", "latest")
+            ),
+            new AtomicReference<>("streamId")
+        );
+
+        final HttpClientRequest<ByteBuf> request = createPost.call("something")
+            .toBlocking()
+            .first();
+
+        final Map<String, String> headers = headersToMap(request.getHeaders());
+        assertThat(headers).containsKeys("Mesos-Stream-Id");
+        assertThat(headers.get("Mesos-Stream-Id")).isEqualTo("streamId");
+    }
+
+    @Test
+    public void testMesosStreamIdNotPresentWhenNull() throws Exception {
+        final Func1<String, Observable<HttpClientRequest<ByteBuf>>> createPost = MesosClient.curryCreatePost(
+            URI.create("http://localhost:12345/api/v1/scheduler"),
+            StringMessageCodec.UTF8_STRING,
+            StringMessageCodec.UTF8_STRING,
+            new UserAgent(
+                literal("testing", "latest")
+            ),
+            new AtomicReference<>(null)
+        );
+
+        final HttpClientRequest<ByteBuf> request = createPost.call("something")
+            .toBlocking()
+            .first();
+
+        final Map<String, String> headers = headersToMap(request.getHeaders());
+        assertThat(headers).doesNotContainKeys("Mesos-Stream-Id");
+    }
+
+    @Test
+    public void testMesosStreamIdIsSavedForSuccessfulSubscribeCall() throws Exception {
+        final AtomicReference<String> mesosStreamId = new AtomicReference<>(null);
+
+        final Func1<HttpClientResponse<ByteBuf>, Observable<ByteBuf>> f = MesosClient.verifyResponseOk(
+            "Subscribe",
+            mesosStreamId
+        );
+
+        final DefaultHttpResponse nettyResponse = new DefaultHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.OK);
+        nettyResponse.headers().add("Mesos-Stream-Id", "streamId");
+        final HttpClientResponse<ByteBuf> response = new HttpClientResponse<>(
+            nettyResponse,
+            UnicastContentSubject.create(1000, TimeUnit.MILLISECONDS)
+        );
+
+        f.call(response);
+
+
+        assertThat(mesosStreamId.get()).isEqualTo("streamId");
+    }
+
+    @Test
+    public void testMesosStreamIdIsNotSavedForUnsuccessfulSubscribeCall() throws Exception {
+        final AtomicReference<String> mesosStreamId = new AtomicReference<>(null);
+
+        final Func1<HttpClientResponse<ByteBuf>, Observable<ByteBuf>> f = MesosClient.verifyResponseOk(
+            "Subscribe",
+            mesosStreamId
+        );
+
+        final DefaultHttpResponse nettyResponse = new DefaultHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.BAD_REQUEST);
+        nettyResponse.headers().add("Mesos-Stream-Id", "streamId");
+        final HttpClientResponse<ByteBuf> response = new HttpClientResponse<>(
+            nettyResponse,
+            UnicastContentSubject.create(1000, TimeUnit.MILLISECONDS)
+        );
+
+        try {
+            f.call(response);
+        } catch (Mesos4xxException e) {
+            // expected
+        }
+
+        assertThat(mesosStreamId.get()).isEqualTo(null);
     }
 
     @NotNull
