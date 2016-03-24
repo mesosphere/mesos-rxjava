@@ -199,6 +199,26 @@ public final class MesosClientTest {
         assertThat(mesosStreamId.get()).isEqualTo(null);
     }
 
+    @Test
+    public void testGetPort_returnsSpecifiedPort() throws Exception {
+        assertThat(MesosClient.getPort(URI.create("http://glavin:500/path"))).isEqualTo(500);
+    }
+
+    @Test
+    public void testGetPort_returns80ForHttp() throws Exception {
+        assertThat(MesosClient.getPort(URI.create("http://glavin/path"))).isEqualTo(80);
+    }
+
+    @Test
+    public void testGetPort_returns443ForHttps() throws Exception {
+        assertThat(MesosClient.getPort(URI.create("https://glavin/path"))).isEqualTo(443);
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testGetPort_throwsExceptionWhenNoPortIsSpecifiedAndSchemeIsNotHttpOrHttps() throws Exception {
+        MesosClient.getPort(URI.create("ftp://glavin/path"));
+    }
+
     @NotNull
     private static Map<String, String> headersToMap(@NotNull final HttpRequestHeaders headers) {
         final HashMap<String, String> map = Maps.newHashMap();
