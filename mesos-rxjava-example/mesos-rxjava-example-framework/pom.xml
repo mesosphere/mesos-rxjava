@@ -30,7 +30,6 @@
 
     <description>
         A simple framework that launches sleep tasks to exercise the client and the mesos http api.
-        Also includes a legacy libmesos framework that mirrors the same logic but uses the old api.
     </description>
 
     <properties>
@@ -46,36 +45,11 @@
             <groupId>com.mesosphere.mesos.rx.java</groupId>
             <artifactId>mesos-rxjava-test</artifactId>
         </dependency>
+        <!--suppress MavenDuplicateDependenciesInspection we're changing the scope to compile instead of test -->
         <dependency>
             <groupId>com.google.guava</groupId>
             <artifactId>guava</artifactId>
             <scope>compile</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.mesos</groupId>
-            <artifactId>mesos</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>io.netty</groupId>
-            <artifactId>netty-transport-native-epoll</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>io.reactivex</groupId>
-            <artifactId>rxjava</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>io.reactivex</groupId>
-            <artifactId>rxnetty</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>io.netty</groupId>
-            <artifactId>netty-codec-http</artifactId>
-        </dependency>
-
-        <!-- Logging -->
-        <dependency>
-            <groupId>org.slf4j</groupId>
-            <artifactId>slf4j-api</artifactId>
         </dependency>
 
         <!--suppress MavenDuplicateDependenciesInspection we're changing the scope to compile instead of test -->

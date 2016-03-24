@@ -21,7 +21,7 @@ import com.mesosphere.mesos.rx.java.util.MessageCodec;
 import com.mesosphere.mesos.rx.java.util.UserAgent;
 import com.mesosphere.mesos.rx.java.util.UserAgentEntry;
 import io.netty.buffer.ByteBuf;
-import io.netty.handler.codec.http.HttpHeaders;
+import io.netty.handler.codec.http.HttpHeaderNames;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import io.reactivex.netty.RxNetty;
 import io.reactivex.netty.protocol.http.client.*;
@@ -229,7 +229,7 @@ public final class MesosClient<Send, Receive> {
             final HttpResponseStatus status = resp.getStatus();
             final int code = status.code();
 
-            final String contentType = resp.getHeaders().get(HttpHeaders.Names.CONTENT_TYPE);
+            final String contentType = resp.getHeaders().get(HttpHeaderNames.CONTENT_TYPE);
             if (code == 200 && receiveMediaType.equals(contentType)) {
                 if (resp.getHeaders().contains(MESOS_STREAM_ID)) {
                     final String streamId = resp.getHeaders().get(MESOS_STREAM_ID);
@@ -410,7 +410,7 @@ public final class MesosClient<Send, Receive> {
             final String userInfo = mesosUri.getUserInfo();
             if (userInfo != null) {
                 request = request.withHeader(
-                    HttpHeaders.Names.AUTHORIZATION,
+                    HttpHeaderNames.AUTHORIZATION.toString(),
                     String.format("Basic %s", Base64.getEncoder().encodeToString(userInfo.getBytes()))
                 );
             }

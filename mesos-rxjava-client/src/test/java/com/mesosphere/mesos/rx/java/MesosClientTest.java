@@ -21,6 +21,7 @@ import com.mesosphere.mesos.rx.java.test.StringMessageCodec;
 import com.mesosphere.mesos.rx.java.util.UserAgent;
 import io.netty.buffer.ByteBuf;
 import io.netty.handler.codec.http.DefaultHttpResponse;
+import io.netty.handler.codec.http.HttpHeaderNames;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import io.netty.handler.codec.http.HttpVersion;
 import io.reactivex.netty.protocol.http.UnicastContentSubject;
@@ -101,9 +102,10 @@ public final class MesosClientTest {
             .toBlocking()
             .first();
 
+        final String authHeaderName = HttpHeaderNames.AUTHORIZATION.toString();
         final Map<String, String> headers = headersToMap(request.getHeaders());
-        assertThat(headers).containsKeys("Authorization");
-        final String authorization = headers.get("Authorization");
+        assertThat(headers).containsKeys(authHeaderName);
+        final String authorization = headers.get(authHeaderName);
         assertThat(authorization).isEqualTo("Basic dGVzdHVzZXI6dGVzdHBhc3N3b3Jk");
 
         final String base64UserPass = authorization.substring("Basic ".length());
