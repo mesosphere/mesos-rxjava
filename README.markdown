@@ -38,7 +38,40 @@ Javadocs for the last successful build of `master` can be found [here](https://t
 
 Releases will be published to Maven Central. Snapshots will be published to Sonatypes OSS Repo.
 
-More details once artifacts are published.
+### Snapshot Repo
+
+Version `0.1.0-SNAPSHOT` has been published to the Sonatype OSS Snapshot Repo.
+```
+<repositories>
+    <repository>
+        <id>ossrh</id>
+        <url>https://oss.sonatype.org/content/repositories/snapshots/</url>
+        <snapshots>
+            <enabled>true</enabled>
+        </snapshots>
+    </repository>
+</repositories>
+```
+
+### Protobuf Client
+
+```
+<dependency>
+    <groupId>com.mesosphere.mesos.rx.java</groupId>
+    <artifactId>mesos-rxjava-protobuf-client</artifactId>
+    <version>0.1.0-SNAPSHOT</version>
+</dependency>
+```
+
+### Testing Tools
+
+```
+<dependency>
+    <groupId>com.mesosphere.mesos.rx.java</groupId>
+    <artifactId>mesos-rxjava-test</artifactId>
+    <version>0.1.0-SNAPSHOT</version>
+</dependency>
+```
 
 ## Build
 
