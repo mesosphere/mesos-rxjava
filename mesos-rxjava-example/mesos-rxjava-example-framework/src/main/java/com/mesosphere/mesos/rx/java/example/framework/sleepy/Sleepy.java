@@ -83,7 +83,7 @@ public final class Sleepy {
 
         final MesosClientBuilder<Call, Event> clientBuilder = ProtobufMesosClientBuilder.schedulerUsingProtos()
             .mesosUri(mesosUri)
-            .applicationUserAgentEntry(userAgentEntryForMavenArtifact("com.mesosphere.mesos.rx.java.example", "mesos-rxjava-example"));
+            .applicationUserAgentEntry(userAgentEntryForMavenArtifact("com.mesosphere.mesos.rx.java.example", "mesos-rxjava-example-framework"));
 
         final Call subscribeCall = subscribe(
             stateObject.getFwId(),
