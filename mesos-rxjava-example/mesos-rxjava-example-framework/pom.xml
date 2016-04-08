@@ -33,6 +33,10 @@
         Also includes a legacy libmesos framework that mirrors the same logic but uses the old api.
     </description>
 
+    <properties>
+        <module.deploy.skip>false</module.deploy.skip>
+    </properties>
+
     <dependencies>
         <dependency>
             <groupId>com.mesosphere.mesos.rx.java</groupId>

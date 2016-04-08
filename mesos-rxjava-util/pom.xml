@@ -33,6 +33,10 @@
         A set of common classes and types used across all modules of the project.
     </description>
 
+    <properties>
+        <module.deploy.skip>false</module.deploy.skip>
+    </properties>
+
     <dependencies>
         <!--
             This project should NEVER have a dependency on any other modules from this project.
