@@ -17,6 +17,7 @@
 package com.mesosphere.mesos.rx.java;
 
 import com.google.common.base.Joiner;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
 import java.util.Map;
@@ -91,5 +92,15 @@ public final class MesosClientErrorContext {
             ", message='" + message + '\'' +
             ", headers=" + MAP_JOINER.join(headers) +
             '}';
+    }
+
+    /**
+     * Close {@code this} context replacing the existing message with {@code message}
+     * @param message    The message to include in the new {@code MesosClientErrorContext}
+     * @return           A new {@code MesosClientErrorContext} with its message set to {@code message}
+     */
+    @NotNull
+    public MesosClientErrorContext withMessage(@NotNull final String message) {
+        return new MesosClientErrorContext(this.statusCode, message, this.headers);
     }
 }

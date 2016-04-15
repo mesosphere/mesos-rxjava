@@ -124,7 +124,7 @@ public final class MesosClient<Send, Receive> {
         final Observable<Receive> receives = createPost.call(subscribe)
             .flatMap(httpClient::submit)
             .subscribeOn(Rx.io())
-            .flatMap(verifyResponseOk(subscribe, mesosStreamId))
+            .flatMap(verifyResponseOk(subscribe, mesosStreamId, receiveCodec.mediaType()))
             .lift(new RecordIOOperator())
             .observeOn(Rx.compute())
             /* Begin temporary back-pressure */
@@ -152,13 +152,15 @@ public final class MesosClient<Send, Receive> {
     @VisibleForTesting
     static <Send> Func1<HttpClientResponse<ByteBuf>, Observable<ByteBuf>> verifyResponseOk(
         @NotNull final Send subscription,
-        @NotNull final AtomicReference<String> mesosStreamId
+        @NotNull final AtomicReference<String> mesosStreamId,
+        @NotNull final String receiveMediaType
     ) {
         return resp -> {
             final HttpResponseStatus status = resp.getStatus();
             final int code = status.code();
 
-            if (code == 200) {
+            final String contentType = resp.getHeaders().get(HttpHeaders.Names.CONTENT_TYPE);
+            if (code == 200 && receiveMediaType.equals(contentType)) {
                 if (resp.getHeaders().contains(MESOS_STREAM_ID)) {
                     final String streamId = resp.getHeaders().get(MESOS_STREAM_ID);
                     mesosStreamId.compareAndSet(null, streamId);
@@ -170,7 +172,21 @@ public final class MesosClient<Send, Receive> {
                 resp.ignoreContent();
 
                 final MesosClientErrorContext context = new MesosClientErrorContext(code, entries);
-                if (400 <= code && code < 500) {
+                if (code == 200) {
+                    // this means that even though we got back a 200 it's not the sort of response we were expecting
+                    // For example hitting an endpoint that returns an html document instead of a document of type
+                    // `receiveMediaType`
+                    throw new MesosException(
+                        subscription,
+                        context.withMessage(
+                            String.format(
+                                "Response had Content-Type \"%s\" expected \"%s\"",
+                                contentType,
+                                receiveMediaType
+                            )
+                        )
+                    );
+                } else if (400 <= code && code < 500) {
                     throw new Mesos4xxException(subscription, context);
                 } else if (500 <= code && code < 600) {
                     throw new Mesos5xxException(subscription, context);
