@@ -158,11 +158,13 @@ public final class MesosClientTest {
 
         final Func1<HttpClientResponse<ByteBuf>, Observable<ByteBuf>> f = MesosClient.verifyResponseOk(
             "Subscribe",
-            mesosStreamId
+            mesosStreamId,
+            StringMessageCodec.UTF8_STRING.mediaType()
         );
 
         final DefaultHttpResponse nettyResponse = new DefaultHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.OK);
         nettyResponse.headers().add("Mesos-Stream-Id", "streamId");
+        nettyResponse.headers().add("Content-Type", StringMessageCodec.UTF8_STRING.mediaType());
         final HttpClientResponse<ByteBuf> response = new HttpClientResponse<>(
             nettyResponse,
             UnicastContentSubject.create(1000, TimeUnit.MILLISECONDS)
@@ -180,11 +182,13 @@ public final class MesosClientTest {
 
         final Func1<HttpClientResponse<ByteBuf>, Observable<ByteBuf>> f = MesosClient.verifyResponseOk(
             "Subscribe",
-            mesosStreamId
+            mesosStreamId,
+            StringMessageCodec.UTF8_STRING.mediaType()
         );
 
         final DefaultHttpResponse nettyResponse = new DefaultHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.BAD_REQUEST);
         nettyResponse.headers().add("Mesos-Stream-Id", "streamId");
+        nettyResponse.headers().add("Content-Type", StringMessageCodec.UTF8_STRING.mediaType());
         final HttpClientResponse<ByteBuf> response = new HttpClientResponse<>(
             nettyResponse,
             UnicastContentSubject.create(1000, TimeUnit.MILLISECONDS)
@@ -217,6 +221,33 @@ public final class MesosClientTest {
     @Test(expected = IllegalArgumentException.class)
     public void testGetPort_throwsExceptionWhenNoPortIsSpecifiedAndSchemeIsNotHttpOrHttps() throws Exception {
         MesosClient.getPort(URI.create("ftp://glavin/path"));
+    }
+
+    @Test
+    public void testVerifyResponseOk_ensuresContentTypeOfResponseMatchesReceiveCodec() throws Exception {
+        final Func1<HttpClientResponse<ByteBuf>, Observable<ByteBuf>> f = MesosClient.verifyResponseOk(
+            "Subscribe",
+            new AtomicReference<>(),
+            StringMessageCodec.UTF8_STRING.mediaType()
+        );
+
+        final DefaultHttpResponse nettyResponse = new DefaultHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.OK);
+        nettyResponse.headers().add("Content-Type", "text/html");
+        final HttpClientResponse<ByteBuf> response = new HttpClientResponse<>(
+            nettyResponse,
+            UnicastContentSubject.create(1000, TimeUnit.MILLISECONDS)
+        );
+
+        try {
+            f.call(response);
+        } catch (MesosException e) {
+            final String expected = String.format(
+                "Response had Content-Type \"%s\" expected \"%s\"",
+                "text/html",
+                StringMessageCodec.UTF8_STRING.mediaType()
+            );
+            assertThat(e.getContext().getMessage()).isEqualTo(expected);
+        }
     }
 
     @NotNull
