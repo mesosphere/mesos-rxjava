@@ -74,12 +74,13 @@ public final class Sleepy {
         if (args.length != 2) {
             final String className = Sleepy.class.getCanonicalName();
             System.err.println("Usage: java -cp <application-jar> " + className + " <mesos-uri> <cpus-per-task>");
+            System.exit(1);
         }
 
         final URI mesosUri = URI.create(args[0]);
         final double cpusPerTask = Double.parseDouble(args[1]);
         final FrameworkID frameworkID = FrameworkID.newBuilder().setValue(fwId).build();
-        final State<FrameworkID, TaskID, TaskState> stateObject = new State<>(frameworkID, cpusPerTask, 32);
+        final State<FrameworkID, TaskID, TaskState> stateObject = new State<>(frameworkID, cpusPerTask, 16);
 
         final MesosClientBuilder<Call, Event> clientBuilder = ProtobufMesosClientBuilder.schedulerUsingProtos()
             .mesosUri(mesosUri)

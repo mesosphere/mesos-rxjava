@@ -53,14 +53,15 @@ public final class LegacySleepy implements Scheduler {
     public static void main(String[] args) {
         try {
             if (args.length != 2) {
-                final String className = Sleepy.class.getCanonicalName();
+                final String className = LegacySleepy.class.getCanonicalName();
                 System.err.println("Usage: java -cp <application-jar> " + className + " <mesos-zk-uri> <cpus-per-task>");
+                System.exit(1);
             }
 
             final String mesosUri = args[0];
             final double cpusPerTask = Double.parseDouble(args[1]);
             final FrameworkID fwId = FrameworkID.newBuilder().setValue("legacy-sleepy-" + UUID.randomUUID()).build();
-            final State<FrameworkID, TaskID, TaskState> state = new State<>(fwId, cpusPerTask, 32);
+            final State<FrameworkID, TaskID, TaskState> state = new State<>(fwId, cpusPerTask, 16);
 
             final Scheduler scheduler = new LegacySleepy(state);
             final FrameworkInfo frameworkInfo = FrameworkInfo.newBuilder()
