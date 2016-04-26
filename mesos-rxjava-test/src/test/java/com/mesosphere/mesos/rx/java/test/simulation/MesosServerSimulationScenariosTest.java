@@ -43,7 +43,7 @@ import static com.mesosphere.mesos.rx.java.util.CollectionUtils.deepEquals;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 
-public final class MesosSchedulerSimulationScenariosTest {
+public final class MesosServerSimulationScenariosTest {
 
     public static final String SUBSCRIBE = "subscribe";
     public static final String SUBSCRIBED = "subscribed";
@@ -68,7 +68,7 @@ public final class MesosSchedulerSimulationScenariosTest {
             .map(RecordIOUtils::createChunk)
             .collect(Collectors.toList());
 
-        final MesosSchedulerSimulation<String, String> sim = new MesosSchedulerSimulation<>(
+        final MesosServerSimulation<String, String> sim = new MesosServerSimulation<>(
             Observable.from(events),
             StringMessageCodec.UTF8_STRING,
             StringMessageCodec.UTF8_STRING,
@@ -84,7 +84,7 @@ public final class MesosSchedulerSimulationScenariosTest {
                 assertThat(response.getStatus()).isEqualTo(HttpResponseStatus.OK);
                 return response.getContent();
             })
-            .map(MesosSchedulerSimulationScenariosTest::bufToBytes)
+            .map(MesosServerSimulationScenariosTest::bufToBytes)
             ;
 
         final TestSubscriber<byte[]> testSubscriber = new TestSubscriber<>();
@@ -134,7 +134,7 @@ public final class MesosSchedulerSimulationScenariosTest {
          * events to it's subscriber without any buffering.
          */
         final BehaviorSubject<String> subject = BehaviorSubject.create();
-        final MesosSchedulerSimulation<String, String> sim = new MesosSchedulerSimulation<>(
+        final MesosServerSimulation<String, String> sim = new MesosServerSimulation<>(
             Observable.from(events),
             StringMessageCodec.UTF8_STRING,
             StringMessageCodec.UTF8_STRING,
@@ -184,7 +184,7 @@ public final class MesosSchedulerSimulationScenariosTest {
             .map(RecordIOUtils::createChunk)
             .collect(Collectors.toList());
 
-        final MesosSchedulerSimulation<String, String> sim = new MesosSchedulerSimulation<>(
+        final MesosServerSimulation<String, String> sim = new MesosServerSimulation<>(
             Observable.from(events),
             StringMessageCodec.UTF8_STRING,
             StringMessageCodec.UTF8_STRING,
@@ -216,7 +216,7 @@ public final class MesosSchedulerSimulationScenariosTest {
 
     @Test
     public void onlyOneSubscriptionPerServer() throws Exception {
-        final MesosSchedulerSimulation<String, String> sim = new MesosSchedulerSimulation<>(
+        final MesosServerSimulation<String, String> sim = new MesosServerSimulation<>(
             Observable.just(SUBSCRIBED),
             StringMessageCodec.UTF8_STRING,
             StringMessageCodec.UTF8_STRING,
@@ -232,7 +232,7 @@ public final class MesosSchedulerSimulationScenariosTest {
                 assertThat(response.getStatus()).isEqualTo(HttpResponseStatus.OK);
                 return response.getContent();
             })
-            .map(MesosSchedulerSimulationScenariosTest::bufToBytes)
+            .map(MesosServerSimulationScenariosTest::bufToBytes)
             ;
 
         final TestSubscriber<byte[]> testSubscriber = new TestSubscriber<>();
@@ -294,7 +294,7 @@ public final class MesosSchedulerSimulationScenariosTest {
                 return message;
             }
         };
-        final MesosSchedulerSimulation<String, String> sim = new MesosSchedulerSimulation<>(
+        final MesosServerSimulation<String, String> sim = new MesosServerSimulation<>(
             Observable.just(SUBSCRIBED),
             StringMessageCodec.UTF8_STRING,
             receiveCodec,
@@ -336,7 +336,7 @@ public final class MesosSchedulerSimulationScenariosTest {
 
                 return response.getContent();
             })
-            .map(MesosSchedulerSimulationScenariosTest::bufToBytes)
+            .map(MesosServerSimulationScenariosTest::bufToBytes)
             .onBackpressureBuffer();
     }
 

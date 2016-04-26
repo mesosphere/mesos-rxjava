@@ -46,7 +46,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Predicate;
 
 /**
- * {@code MesosSchedulerSimulation} provides a server implementing the same protocol defined by Apache Mesos for its
+ * {@code MesosServerSimulation} provides a server implementing the same protocol defined by Apache Mesos for its
  * <a href="https://github.com/apache/mesos/blob/master/docs/scheduler-http-api.md">HTTP Scheduler API</a>.
  * The server has the following behavior:
  * <ol>
@@ -61,8 +61,8 @@ import java.util.function.Predicate;
  * <li>Server only supports one event stream, once that stream is complete a new server will need to be created.</li>
  * </ol>
  */
-public final class MesosSchedulerSimulation<Event, Call> {
-    private static final Logger LOGGER = LoggerFactory.getLogger(MesosSchedulerSimulation.class);
+public final class MesosServerSimulation<Event, Call> {
+    private static final Logger LOGGER = LoggerFactory.getLogger(MesosServerSimulation.class);
     private static final Marker RECEIVE_MARKER = MarkerFactory.getMarker("<<<");
     private static final Marker SEND_MARKER = MarkerFactory.getMarker(">>>");
 
@@ -85,7 +85,7 @@ public final class MesosSchedulerSimulation<Event, Call> {
     private Semaphore sem;
 
     /**
-     * Create a {@code MesosSchedulerSimulation} that will use {@code events} as the event stream to return to a
+     * Create a {@code MesosServerSimulation} that will use {@code events} as the event stream to return to a
      * a client when {@code isSubscribePredicate} evaluates to {@code true}
      * <p>
      * The simulation server must be started using {@link #start()} before requests can be serviced by the server.
@@ -97,7 +97,7 @@ public final class MesosSchedulerSimulation<Event, Call> {
      * @param receiveCodec         The {@link MessageCodec} to use to decode {@link Call}s received by the server
      * @param isSubscribePredicate The predicate used to determine if a {@link Call} is a "Subscribe" call
      */
-    public MesosSchedulerSimulation(
+    public MesosServerSimulation(
         @NotNull final Observable<Event> events,
         @NotNull final MessageCodec<Event> sendCodec,
         @NotNull final MessageCodec<Call> receiveCodec,

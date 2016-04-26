@@ -32,9 +32,9 @@ import java.nio.charset.StandardCharsets;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-public final class MesosSchedulerSimulationTest {
+public final class MesosServerSimulationTest {
 
-    private final MesosSchedulerSimulation<String, String> mesosSchedulerSimulation = new MesosSchedulerSimulation<>(
+    private final MesosServerSimulation<String, String> mesosServerSimulation = new MesosServerSimulation<>(
         BehaviorSubject.create(),
         StringMessageCodec.UTF8_STRING,
         StringMessageCodec.UTF8_STRING,
@@ -44,12 +44,12 @@ public final class MesosSchedulerSimulationTest {
 
     @Before
     public void setUp() throws Exception {
-        serverPort = mesosSchedulerSimulation.start();
+        serverPort = mesosServerSimulation.start();
     }
 
     @After
     public void tearDown() throws Exception {
-        mesosSchedulerSimulation.shutdown();
+        mesosServerSimulation.shutdown();
     }
 
     @Test
@@ -61,8 +61,8 @@ public final class MesosSchedulerSimulationTest {
         final HttpResponseHeaders headers = response.getHeaders();
         assertThat(headers.getHeader("Accept")).isEqualTo(StringMessageCodec.UTF8_STRING.mediaType());
 
-        assertThat(mesosSchedulerSimulation.getCallsReceived()).hasSize(1);
-        assertThat(mesosSchedulerSimulation.getCallsReceived()).contains("decline");
+        assertThat(mesosServerSimulation.getCallsReceived()).hasSize(1);
+        assertThat(mesosServerSimulation.getCallsReceived()).contains("decline");
     }
 
     @Test
@@ -74,7 +74,7 @@ public final class MesosSchedulerSimulationTest {
         final HttpResponseHeaders headers = response.getHeaders();
         assertThat(headers.getHeader("Accept")).isEqualTo(StringMessageCodec.UTF8_STRING.mediaType());
 
-        assertThat(mesosSchedulerSimulation.getCallsReceived()).hasSize(0);
+        assertThat(mesosServerSimulation.getCallsReceived()).hasSize(0);
     }
 
     @Test
@@ -95,7 +95,7 @@ public final class MesosSchedulerSimulationTest {
         final HttpResponseHeaders headers = response.getHeaders();
         assertThat(headers.getHeader("Accept")).isEqualTo(StringMessageCodec.UTF8_STRING.mediaType());
 
-        assertThat(mesosSchedulerSimulation.getCallsReceived()).hasSize(0);
+        assertThat(mesosServerSimulation.getCallsReceived()).hasSize(0);
     }
 
     @Test
@@ -119,7 +119,7 @@ public final class MesosSchedulerSimulationTest {
         final HttpResponseHeaders headers = response.getHeaders();
         assertThat(headers.getHeader("Accept")).isEqualTo(StringMessageCodec.UTF8_STRING.mediaType());
 
-        assertThat(mesosSchedulerSimulation.getCallsReceived()).hasSize(0);
+        assertThat(mesosServerSimulation.getCallsReceived()).hasSize(0);
     }
 
     @Test
@@ -142,7 +142,7 @@ public final class MesosSchedulerSimulationTest {
         final HttpResponseHeaders headers = response.getHeaders();
         assertThat(headers.getHeader("Accept")).isEqualTo(StringMessageCodec.UTF8_STRING.mediaType());
 
-        assertThat(mesosSchedulerSimulation.getCallsReceived()).hasSize(0);
+        assertThat(mesosServerSimulation.getCallsReceived()).hasSize(0);
     }
 
     @NotNull
