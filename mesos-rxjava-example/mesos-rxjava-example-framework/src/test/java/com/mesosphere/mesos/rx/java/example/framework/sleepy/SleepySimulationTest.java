@@ -20,7 +20,7 @@ import com.google.protobuf.ByteString;
 import com.mesosphere.mesos.rx.java.protobuf.ProtobufMessageCodecs;
 import com.mesosphere.mesos.rx.java.protobuf.SchedulerCalls;
 import com.mesosphere.mesos.rx.java.test.Async;
-import com.mesosphere.mesos.rx.java.test.simulation.MesosSchedulerSimulation;
+import com.mesosphere.mesos.rx.java.test.simulation.MesosServerSimulation;
 import org.apache.mesos.v1.scheduler.Protos;
 import org.jetbrains.annotations.NotNull;
 import org.junit.After;
@@ -57,14 +57,14 @@ public final class SleepySimulationTest {
     public Async async = new Async();
 
     private BehaviorSubject<Protos.Event> subject;
-    private MesosSchedulerSimulation<Protos.Event, Protos.Call> sim;
+    private MesosServerSimulation<Protos.Event, Protos.Call> sim;
 
     private URI uri;
 
     @Before
     public void setUp() throws Exception {
         subject = BehaviorSubject.create();
-        sim = new MesosSchedulerSimulation<>(
+        sim = new MesosServerSimulation<>(
             subject,
             ProtobufMessageCodecs.SCHEDULER_EVENT,
             ProtobufMessageCodecs.SCHEDULER_CALL,
