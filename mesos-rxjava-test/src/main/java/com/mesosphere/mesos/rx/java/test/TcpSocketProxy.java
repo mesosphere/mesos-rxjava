@@ -27,10 +27,7 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.net.InetSocketAddress;
-import java.net.ServerSocket;
-import java.net.Socket;
-import java.net.SocketException;
+import java.net.*;
 import java.util.List;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -72,9 +69,21 @@ public final class TcpSocketProxy implements Closeable {
     @NotNull
     private final AtomicBoolean shutdown;
 
+    @NotNull
+    private final CountDownLatch startupCountDownLatch;
+    @NotNull
+    private final CountDownLatch shutdownCountDownLatch;
+
     @Nullable
     private ScheduledFuture<?> murderer;
 
+    /**
+     * Define a proxy between two addresses.  All bytes sent to {@code listen} will be forwarded to {@code destination}
+     * and vice versa.  Due to this proxy being "dumb" (raw sockets listening and opened to destination) socket level
+     * smarts like TLS are not necessarily supported.
+     * @param listen         The {@link InetSocketAddress} the proxy should listen on.
+     * @param destination    The {@link InetSocketAddress} the proxy should open a socket to.
+     */
     public TcpSocketProxy(@NotNull final InetSocketAddress listen, @NotNull final InetSocketAddress destination) {
         this.listen = listen;
         this.dest = destination;
@@ -83,23 +92,52 @@ public final class TcpSocketProxy implements Closeable {
         socketRef = new AtomicReference<>();
         futures = Lists.newCopyOnWriteArrayList();
         shutdown = new AtomicBoolean(false);
+        startupCountDownLatch = new CountDownLatch(1);
+        shutdownCountDownLatch = new CountDownLatch(1);
     }
 
-    public void run() throws IOException {
+    /**
+     * Start the proxy in the background.
+     */
+    public void start() {
         if (shutdown.get()) {
-            throw new IllegalStateException("Can not run an already shutdown proxy");
+            throw new IllegalStateException("Can not start an already shutdown proxy");
         }
         final Future<?> submit = service.submit(new ProxyServer());
 
         futures.add(submit);
     }
 
+    /**
+     * Get the port the proxy is listening on. This method will block until the proxy is up and running, meaning
+     * {@link #start()} will need to be called before this method can return a value.
+     * @return The port the proxy is listening on.
+     */
+    public int getListenPort() {
+        try {
+            startupCountDownLatch.await();
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
+        return socketRef.get().getLocalPort();
+    }
+
+    /**
+     * Returns a boolean indicating whether the proxy has been shutdown or not.
+     * @return a boolean indicating whether the proxy has been shutdown or not.
+     */
     public boolean isShutdown() {
         return shutdown.get();
     }
 
+    /**
+     * Useful wrapper method allowing the use of a proxy in a try-with block.
+     * <p>
+     * Calls {@link #shutdown()} and tears down all background threads.
+     * @see #shutdown()
+     */
     @Override
-    public void close() throws IOException {
+    public void close() {
         shutdown();
         if (!murderService.isShutdown()) {
             murderService.shutdownNow();
@@ -108,12 +146,32 @@ public final class TcpSocketProxy implements Closeable {
         murderer = null;
     }
 
+    /**
+     * Immediately run the shutdown process for this proxy.
+     * <p>
+     * Shutting down the proxy will result in all open sockets being closed and the listening socket being closed.
+     * <p>
+     * This method will block until shutdown has completed.
+     *
+     * @see #shutdownIn(long, TimeUnit)
+     */
     public void shutdown() {
         if (!service.isTerminated()) {
             shutdownIn(0, TimeUnit.SECONDS);
         }
+        try {
+            shutdownCountDownLatch.await();
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
     }
 
+    /**
+     * Run the shutdown process for this proxy in {@code delay} {@code timeUnit}.
+     * @param delay       The time from now to when shutdown should begin
+     * @param timeUnit    The time unit of the delay parameter
+     * @see ScheduledExecutorService#schedule(Callable, long, TimeUnit)
+     */
     public void shutdownIn(final long delay, @NotNull final TimeUnit timeUnit) {
         this.murderer = murderService.schedule(new ServerShutdownTask(), delay, timeUnit);
     }
@@ -121,24 +179,26 @@ public final class TcpSocketProxy implements Closeable {
     private final class ProxyServer implements Runnable {
         @Override
         public void run() {
-            final String proxyDescription = String.format(
-                "%s:%d -> %s:%d",
-                listen.getAddress(),
-                listen.getPort(),
-                dest.getAddress(),
-                dest.getPort());
             try {
-                LOGGER.info("Creating proxy: {}", proxyDescription);
                 final ServerSocket socket = new ServerSocket(listen.getPort());
+                final String proxyDescription = String.format(
+                    "%s:%d -> %s:%d",
+                    socket.getInetAddress(),
+                    socket.getLocalPort(),
+                    dest.getAddress(),
+                    dest.getPort()
+                );
+                LOGGER.info("Creating proxy: {}", proxyDescription);
                 socketRef.set(socket);
+                startupCountDownLatch.countDown();
                 while (true) {
                     final Socket accept = socket.accept();
                     final InputStream in = accept.getInputStream();
                     final OutputStream out = accept.getOutputStream();
 
-                    final Socket mesos = new Socket(dest.getAddress(), dest.getPort());
-                    final OutputStream send = mesos.getOutputStream();
-                    final InputStream ret = mesos.getInputStream();
+                    final Socket downStream = new Socket(dest.getAddress(), dest.getPort());
+                    final OutputStream send = downStream.getOutputStream();
+                    final InputStream ret = downStream.getInputStream();
                     final Future<?> f1 = service.submit(() -> {
                         try {
                             ByteStreams.copy(in, send);
@@ -154,7 +214,7 @@ public final class TcpSocketProxy implements Closeable {
                         }
                     });
                     sockets.add(accept);
-                    sockets.add(mesos);
+                    sockets.add(downStream);
                     futures.add(f1);
                     futures.add(f2);
                 }
@@ -163,6 +223,13 @@ public final class TcpSocketProxy implements Closeable {
                     case "Socket closed":
                         break;
                     default:
+                        final String proxyDescription = String.format(
+                            "%s:%d -> %s:%d",
+                            listen.getAddress(),
+                            listen.getPort(),
+                            dest.getAddress(),
+                            dest.getPort()
+                        );
                         LOGGER.error(String.format("Error creating proxy: %s", proxyDescription), se);
                 }
             } catch (IOException e) {
@@ -197,6 +264,8 @@ public final class TcpSocketProxy implements Closeable {
                 LOGGER.debug("Proxy shutdown complete");
             } catch (IOException e) {
                 throw new RuntimeException(e);
+            } finally {
+                shutdownCountDownLatch.countDown();
             }
         }
     }
