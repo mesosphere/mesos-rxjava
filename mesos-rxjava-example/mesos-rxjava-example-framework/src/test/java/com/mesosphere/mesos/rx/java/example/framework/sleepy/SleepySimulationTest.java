@@ -82,9 +82,21 @@ public final class SleepySimulationTest {
     @Test
     public void offerSimulation() throws Throwable {
         final String fwId = "sleepy-" + UUID.randomUUID();
-        final Protos.Call subscribe = SchedulerCalls.subscribe(fwId, "root", "sleepy", 0);
+        final org.apache.mesos.v1.Protos.FrameworkID frameworkID = org.apache.mesos.v1.Protos.FrameworkID.newBuilder()
+            .setValue(fwId)
+            .build();
+        final Protos.Call subscribe = SchedulerCalls.subscribe(
+            frameworkID,
+            org.apache.mesos.v1.Protos.FrameworkInfo.newBuilder()
+                .setId(frameworkID)
+                .setUser("root")
+                .setName("sleepy")
+                .setFailoverTimeout(0)
+                .setRole("*")
+                .build()
+        );
 
-        async.run("sleepy-framework", () -> Sleepy._main(fwId, uri.toString(), "1"));
+        async.run("sleepy-framework", () -> Sleepy._main(fwId, uri.toString(), "1", "*"));
 
         subject.onNext(subscribed(fwId, 15));
         sim.awaitSubscribeCall();

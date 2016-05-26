@@ -130,19 +130,35 @@ public final class SchedulerCalls {
         @NotNull final String frameworkName,
         final long failoverTimeoutSeconds
     ) {
+        final Protos.FrameworkInfo frameworkInfo = Protos.FrameworkInfo.newBuilder()
+            .setId(frameworkId)
+            .setUser(user)
+            .setName(frameworkName)
+            .setFailoverTimeout(failoverTimeoutSeconds)
+            .build();
+        return subscribe(frameworkId, frameworkInfo);
+    }
+
+    /**
+     * Utility method to more succinctly construct a {@link Call Call} of type {@link Type#SUBSCRIBE SUBSCRIBE}.
+     * <p>
+     *
+     * @param frameworkId   The frameworkId to set on the {@link Call Call} messages.
+     * @param frameworkInfo The frameworkInfo to set on the {@link Subscribe Subscribe} sub-message.
+     * @return An {@link Call Call} of type {@link Type#SUBSCRIBE SUBSCRIBE} with the configured
+     * {@link Subscribe Subscribe} sub-message.
+     */
+    @NotNull
+    public static Call subscribe(
+        @NotNull final Protos.FrameworkID frameworkId,
+        @NotNull final Protos.FrameworkInfo frameworkInfo
+    ) {
         return newBuilder()
             .setFrameworkId(frameworkId)
             .setType(Type.SUBSCRIBE)
             .setSubscribe(
                 Subscribe.newBuilder()
-                    .setFrameworkInfo(
-                        Protos.FrameworkInfo.newBuilder()
-                            .setId(frameworkId)
-                            .setUser(user)
-                            .setName(frameworkName)
-                            .setFailoverTimeout(failoverTimeoutSeconds)
-                            .build()
-                    )
+                    .setFrameworkInfo(frameworkInfo)
             )
             .build();
     }

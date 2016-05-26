@@ -17,11 +17,12 @@
 package com.mesosphere.mesos.rx.java.example.framework.sleepy;
 
 import com.mesosphere.mesos.rx.java.MesosClientBuilder;
-import com.mesosphere.mesos.rx.java.protobuf.ProtobufMesosClientBuilder;
 import com.mesosphere.mesos.rx.java.SinkOperation;
 import com.mesosphere.mesos.rx.java.SinkOperations;
 import com.mesosphere.mesos.rx.java.protobuf.ProtoUtils;
+import com.mesosphere.mesos.rx.java.protobuf.ProtobufMesosClientBuilder;
 import com.mesosphere.mesos.rx.java.protobuf.SchedulerCalls;
+import org.apache.mesos.v1.Protos;
 import org.apache.mesos.v1.Protos.*;
 import org.apache.mesos.v1.scheduler.Protos.Call;
 import org.apache.mesos.v1.scheduler.Protos.Event;
@@ -36,6 +37,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
+import static com.google.common.base.Preconditions.checkState;
 import static com.google.common.collect.Lists.newArrayList;
 import static com.mesosphere.mesos.rx.java.SinkOperations.sink;
 import static com.mesosphere.mesos.rx.java.protobuf.SchedulerCalls.decline;
@@ -71,16 +73,18 @@ public final class Sleepy {
     }
 
     static void _main(final String fwId, final String... args) throws Throwable {
-        if (args.length != 2) {
+        if (args.length != 3) {
             final String className = Sleepy.class.getCanonicalName();
-            System.err.println("Usage: java -cp <application-jar> " + className + " <mesos-uri> <cpus-per-task>");
+            System.err.println("Usage: java -cp <application-jar> " + className + " <mesos-uri> <cpus-per-task> <framework-role>");
             System.exit(1);
         }
 
         final URI mesosUri = URI.create(args[0]);
         final double cpusPerTask = Double.parseDouble(args[1]);
+        final String role = args[2];
+        checkState(role != null && !role.trim().isEmpty(), "<framework-role> must not be empty");
         final FrameworkID frameworkID = FrameworkID.newBuilder().setValue(fwId).build();
-        final State<FrameworkID, TaskID, TaskState> stateObject = new State<>(frameworkID, cpusPerTask, 16);
+        final State<FrameworkID, TaskID, TaskState> stateObject = new State<>(frameworkID, role.trim(), cpusPerTask, 16);
 
         final MesosClientBuilder<Call, Event> clientBuilder = ProtobufMesosClientBuilder.schedulerUsingProtos()
             .mesosUri(mesosUri)
@@ -88,9 +92,13 @@ public final class Sleepy {
 
         final Call subscribeCall = subscribe(
             stateObject.getFwId(),
-            Optional.ofNullable(System.getenv("user")).orElse("root"), // https://issues.apache.org/jira/browse/MESOS-3747
-            "sleepy",
-            0
+            Protos.FrameworkInfo.newBuilder()
+                .setId(stateObject.getFwId())
+                .setUser(Optional.ofNullable(System.getenv("user")).orElse("root")) // https://issues.apache.org/jira/browse/MESOS-3747
+                .setName("sleepy")
+                .setFailoverTimeout(0)
+                .setRole(stateObject.getResourceRole())
+                .build()
         );
 
         final Observable<State<FrameworkID, TaskID, TaskState>> stateObservable = just(stateObject).repeat();
@@ -139,6 +147,7 @@ public final class Sleepy {
         final Offer offer = t._1;
         final State<FrameworkID, TaskID, TaskState> state = t._2;
         final int offerCount = state.getOfferCounter().incrementAndGet();
+        final String desiredRole = state.getResourceRole();
 
         final FrameworkID frameworkId = state.getFwId();
         final AgentID agentId = offer.getAgentId();
@@ -149,27 +158,36 @@ public final class Sleepy {
             .collect(groupingBy(Resource::getName));
         final List<Resource> cpuList = resources.get("cpus");
         final List<Resource> memList = resources.get("mem");
-        if (cpuList != null && !cpuList.isEmpty() && memList != null && !memList.isEmpty()) {
-            final Resource cpus = cpuList.iterator().next();
-            final Resource mem = memList.iterator().next();
+        if (
+            cpuList != null && !cpuList.isEmpty()
+                && memList != null && !memList.isEmpty()
+                && cpuList.size() == memList.size()
+            ) {
             final List<TaskInfo> tasks = newArrayList();
+            for (int i = 0; i < cpuList.size(); i++) {
+                final Resource cpus = cpuList.get(i);
+                final Resource mem = memList.get(i);
 
-            double availableCpu = cpus.getScalar().getValue();
-            double availableMem = mem.getScalar().getValue();
-            final double cpusPerTask = state.getCpusPerTask();
-            final double memMbPerTask = state.getMemMbPerTask();
-            while (availableCpu >= cpusPerTask && availableMem >= memMbPerTask) {
-                availableCpu -= cpusPerTask;
-                availableMem -= memMbPerTask;
-                final String taskId = String.format("task-%d-%d", offerCount, state.getTotalTaskCounter().incrementAndGet());
-                tasks.add(sleepTask(agentId, taskId, cpusPerTask, memMbPerTask));
+                if (desiredRole.equals(cpus.getRole()) && desiredRole.equals(mem.getRole())) {
+                    double availableCpu = cpus.getScalar().getValue();
+                    double availableMem = mem.getScalar().getValue();
+                    final double cpusPerTask = state.getCpusPerTask();
+                    final double memMbPerTask = state.getMemMbPerTask();
+                    while (availableCpu >= cpusPerTask && availableMem >= memMbPerTask) {
+                        availableCpu -= cpusPerTask;
+                        availableMem -= memMbPerTask;
+                        final String taskId = String.format("task-%d-%d", offerCount, state.getTotalTaskCounter().incrementAndGet());
+                        tasks.add(sleepTask(agentId, taskId, cpus.getRole(), cpusPerTask, mem.getRole(), memMbPerTask));
+                    }
+                }
             }
 
             if (!tasks.isEmpty()) {
                 LOGGER.info("Launching {} tasks", tasks.size());
                 return sink(
                     sleep(frameworkId, ids, tasks),
-                    () -> tasks.forEach(task -> state.put(task.getTaskId(), TaskState.TASK_STAGING))
+                    () -> tasks.forEach(task -> state.put(task.getTaskId(), TaskState.TASK_STAGING)),
+                    (e) -> LOGGER.warn("", e)
                 );
             } else {
                 return sink(decline(frameworkId, ids));
@@ -180,7 +198,11 @@ public final class Sleepy {
     }
 
     @NotNull
-    private static Call sleep(@NotNull final FrameworkID frameworkId, final List<OfferID> offerIds, final List<TaskInfo> tasks) {
+    private static Call sleep(
+        @NotNull final FrameworkID frameworkId,
+        @NotNull final List<OfferID> offerIds,
+        @NotNull final List<TaskInfo> tasks
+    ) {
         return Call.newBuilder()
             .setFrameworkId(frameworkId)
             .setType(Call.Type.ACCEPT)
@@ -200,7 +222,14 @@ public final class Sleepy {
     }
 
     @NotNull
-    private static TaskInfo sleepTask(@NotNull final AgentID agentId, @NotNull final String taskId, final double cpus, final double mem) {
+    private static TaskInfo sleepTask(
+        @NotNull final AgentID agentId,
+        @NotNull final String taskId,
+        @NotNull final String cpusRole,
+        final double cpus,
+        @NotNull final String memRole,
+        final double mem
+    ) {
         final String sleepSeconds = Optional.ofNullable(System.getenv("SLEEP_SECONDS")).orElse("15");
         return TaskInfo.newBuilder()
             .setName(taskId)
@@ -220,12 +249,12 @@ public final class Sleepy {
             )
             .addResources(Resource.newBuilder()
                 .setName("cpus")
-                .setRole("*")
+                .setRole(cpusRole)
                 .setType(Value.Type.SCALAR)
                 .setScalar(Value.Scalar.newBuilder().setValue(cpus)))
             .addResources(Resource.newBuilder()
                 .setName("mem")
-                .setRole("*")
+                .setRole(memRole)
                 .setType(Value.Type.SCALAR)
                 .setScalar(Value.Scalar.newBuilder().setValue(mem)))
             .build();
