@@ -1,0 +1,18 @@
+{
+  "id": "/sleepy",
+  "cmd": "$(pwd)/jre*/bin/java $JAVA_OPTS -jar mesos-rxjava-example-framework-*.jar $MESOS_URI $CPUS_PER_TASK",
+  "cpus": 0.5,
+  "mem": 128,
+  "disk": 0,
+  "instances": 1,
+  "env": {
+    "JAVA_OPTS": "-Xms128m -Xmx128m",
+    "MESOS_URI": "http://leader.mesos:5050/api/v1/scheduler",
+    "SLEEP_SECONDS": "30",
+    "CPUS_PER_TASK": "0.01"
+  },
+  "uris": [
+    "https://downloads.mesosphere.io/java/jre-8u92-linux-x64.tar.gz",
+    "https://oss.sonatype.org/content/repositories/snapshots/com/mesosphere/mesos/rx/java/example/mesos-rxjava-example-framework/0.1.0-SNAPSHOT/mesos-rxjava-example-framework-0.1.0-20160427.023409-6-jar-with-dependencies.jar"
+  ]
+}

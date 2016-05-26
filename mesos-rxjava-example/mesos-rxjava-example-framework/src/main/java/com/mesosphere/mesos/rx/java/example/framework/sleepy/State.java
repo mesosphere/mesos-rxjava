@@ -31,6 +31,8 @@ final class State<FwId, TaskId, TaskState> {
 
     private final double cpusPerTask;
     private final double memMbPerTask;
+    @NotNull
+    private final String resourceRole;
 
     @NotNull
     private final Map<TaskId, TaskState> taskStates;
@@ -42,8 +44,14 @@ final class State<FwId, TaskId, TaskState> {
     @NotNull
     private final FwId fwId;
 
-    public State(@NotNull final FwId fwId, final double cpusPerTask, final double memMbPerTask) {
+    public State(
+        @NotNull final FwId fwId,
+        @NotNull final String resourceRole,
+        final double cpusPerTask,
+        final double memMbPerTask
+    ) {
         this.fwId = fwId;
+        this.resourceRole = resourceRole;
         this.cpusPerTask = cpusPerTask;
         this.memMbPerTask = memMbPerTask;
         this.taskStates = newConcurrentMap();
@@ -60,6 +68,11 @@ final class State<FwId, TaskId, TaskState> {
 
     public double getMemMbPerTask() {
         return memMbPerTask;
+    }
+
+    @NotNull
+    public String getResourceRole() {
+        return resourceRole;
     }
 
     @NotNull
