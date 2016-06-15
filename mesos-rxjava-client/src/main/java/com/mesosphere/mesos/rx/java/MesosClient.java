@@ -36,6 +36,7 @@ import rx.exceptions.Exceptions;
 import rx.functions.Func1;
 
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.Base64;
 import java.util.List;
 import java.util.Map;
@@ -65,11 +66,9 @@ public final class MesosClient<Send, Receive> {
     private final ExecutorService exec = Executors.newSingleThreadExecutor(r -> new Thread(r, "stream-monitor-thread"));
 
     @NotNull
-    private final MessageCodec<Send> sendCodec;
+    private final URI mesosUri;
     @NotNull
     private final MessageCodec<Receive> receiveCodec;
-    @NotNull
-    private final HttpClient<ByteBuf, ByteBuf> httpClient;
     @NotNull
     private final Send subscribe;
     @NotNull
@@ -78,6 +77,8 @@ public final class MesosClient<Send, Receive> {
     @NotNull
     @VisibleForTesting
     final Func1<Send, Observable<HttpClientRequest<ByteBuf>>> createPost;
+    @NotNull
+    private final UserAgent userAgent;
 
     @NotNull
     private final AtomicReference<String> mesosStreamId = new AtomicReference<>(null);
@@ -90,21 +91,16 @@ public final class MesosClient<Send, Receive> {
         @NotNull final Send subscribe,
         @NotNull final Function<Observable<Receive>, Observable<Optional<SinkOperation<Send>>>> streamProcessor
     ) {
-        this.sendCodec = sendCodec;
+        this.mesosUri = mesosUri;
         this.receiveCodec = receiveCodec;
         this.subscribe = subscribe;
         this.streamProcessor = streamProcessor;
 
-        final UserAgent userAgent = new UserAgent(
+        userAgent = new UserAgent(
             applicationUserAgentEntry,
             userAgentEntryForMavenArtifact("com.mesosphere.mesos.rx.java", "mesos-rxjava-client"),
             userAgentEntryForGradleArtifact("rxnetty")
         );
-
-        httpClient = RxNetty.<ByteBuf, ByteBuf>newHttpClientBuilder(mesosUri.getHost(), getPort(mesosUri))
-            .withName(userAgent.getEntries().get(0).getName())
-            .pipelineConfigurator(new HttpClientPipelineConfigurator<>())
-            .build();
 
         createPost = curryCreatePost(mesosUri, sendCodec, receiveCodec, userAgent, mesosStreamId);
     }
@@ -121,6 +117,14 @@ public final class MesosClient<Send, Receive> {
      */
     @NotNull
     public AwaitableSubscription openStream() {
+
+        final URI uri = resolveMesosUri(mesosUri);
+
+        final HttpClient<ByteBuf, ByteBuf> httpClient = RxNetty.<ByteBuf, ByteBuf>newHttpClientBuilder(uri.getHost(), getPort(uri))
+            .withName(userAgent.getEntries().get(0).getName())
+            .pipelineConfigurator(new HttpClientPipelineConfigurator<>())
+            .build();
+
         final Observable<Receive> receives = createPost.call(subscribe)
             .flatMap(httpClient::submit)
             .subscribeOn(Rx.io())
@@ -146,6 +150,73 @@ public final class MesosClient<Send, Receive> {
             .subscribe(decorator);
 
         return new ObservableAwaitableSubscription(Observable.from(exec.submit(decorator)), subscription);
+    }
+
+    /**
+     * The Mesos HTTP Scheduler API will send a redirect to a client if it is not the leader. The client that is
+     * constructed during {@link #openStream} is bound to a specific host and port, due to this behavior
+     * we "probe" Mesos to try and find out where it's "master" is before we configure the client.
+     *
+     * This method will attempt to send a simple GET to {@code mesosUri}, however instead of going to the path
+     * specified, it will go to {@code /redirect} and construct a uri relative to mesosUri using the host and port
+     * returned in the Location header of the response.
+     */
+    @NotNull
+    private static URI resolveMesosUri(final @NotNull URI mesosUri) {
+        final String redirectUri = createRedirectUri(mesosUri);
+        LOGGER.info("Probing Mesos server at {}", redirectUri);
+
+        // When sending an individual request (rather than creating a client) RxNetty WILL follow redirects,
+        // so here we tell it not to do that for this request by creating the config object below.
+        final HttpClient.HttpClientConfig config =
+            HttpClient.HttpClientConfig.Builder.fromDefaultConfig()
+                .setFollowRedirect(false)
+                .build();
+        final HttpClientResponse<ByteBuf> redirectResponse =
+            RxNetty.createHttpRequest(HttpClientRequest.createGet(redirectUri), config)
+                .toBlocking()
+                .first();
+
+        return getUriFromRedirectResponse(mesosUri, redirectResponse);
+    }
+
+    @NotNull
+    @VisibleForTesting
+    static URI getUriFromRedirectResponse(final @NotNull URI mesosUri, @NotNull final HttpClientResponse<ByteBuf> redirectResponse) {
+        if (redirectResponse.getStatus().equals(HttpResponseStatus.TEMPORARY_REDIRECT)) {
+            final String location = redirectResponse.getHeaders().get("Location");
+            final URI newUri = resolveRelativeUri(mesosUri, location);
+            LOGGER.info("Using new Mesos URI: {}", newUri);
+            return newUri;
+        } else {
+            LOGGER.info("Continuing with Mesos URI as-is");
+            return mesosUri;
+        }
+    }
+
+    @NotNull
+    @VisibleForTesting
+    static URI resolveRelativeUri(final @NotNull URI mesosUri, final String location) {
+        final URI relativeUri = mesosUri.resolve(location);
+        try {
+            return new URI(
+                relativeUri.getScheme(),
+                relativeUri.getUserInfo(),
+                relativeUri.getHost(),
+                relativeUri.getPort(),
+                mesosUri.getPath(),
+                mesosUri.getQuery(),
+                mesosUri.getFragment()
+            );
+        } catch (URISyntaxException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    @NotNull
+    @VisibleForTesting
+    static String createRedirectUri(@NotNull final URI uri) {
+        return uri.toString().replaceAll("/api/v1/(?:scheduler|executor)", "/redirect");
     }
 
     @NotNull

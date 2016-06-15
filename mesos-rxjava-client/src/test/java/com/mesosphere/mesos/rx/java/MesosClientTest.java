@@ -250,6 +250,73 @@ public final class MesosClientTest {
         }
     }
 
+    @Test
+    public void testResolveRelativeUri_usesSchemeHostAndPortFromLocation() throws Exception {
+        final URI mesosUri = URI.create("http://127.1.0.1:5050/api/v1/scheduler");
+        final String location = "//127.1.0.2:5050";
+        final URI actual = MesosClient.resolveRelativeUri(mesosUri, location);
+        assertThat(actual).isEqualTo(URI.create("http://127.1.0.2:5050/api/v1/scheduler"));
+    }
+
+    @Test
+    public void testResolveRelativeUri_usesSchemeHostAndPortFromLocation_defaultPort() throws Exception {
+        final URI mesosUri = URI.create("http://127.1.0.1:5050/api/v1/scheduler");
+        final String location = "//127.1.0.2";
+        final URI actual = MesosClient.resolveRelativeUri(mesosUri, location);
+        assertThat(actual).isEqualTo(URI.create("http://127.1.0.2/api/v1/scheduler"));
+    }
+
+    @Test
+    public void testCreateRedirectUri() throws Exception {
+        final URI mesosUri = URI.create("http://127.1.0.1:5050/api/v1/scheduler");
+        final String actual = MesosClient.createRedirectUri(mesosUri);
+        assertThat(actual).isEqualTo("http://127.1.0.1:5050/redirect");
+    }
+
+    @Test
+    public void testCreateRedirectUri_nestedPath() throws Exception {
+        final URI mesosUri = URI.create("http://127.1.0.1:5050/nested/api/v1/scheduler");
+        final String actual = MesosClient.createRedirectUri(mesosUri);
+        assertThat(actual).isEqualTo("http://127.1.0.1:5050/nested/redirect");
+    }
+
+    @Test
+    public void testGetUriFromRedirectResponse() throws Exception {
+        final URI mesosUri = URI.create("http://127.1.0.1:5050/api/v1/scheduler");
+        final DefaultHttpResponse nettyResponse = new DefaultHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.TEMPORARY_REDIRECT);
+        nettyResponse.headers().add("Location", "//127.1.0.2:5050");
+        final HttpClientResponse<ByteBuf> response = new HttpClientResponse<>(
+            nettyResponse,
+            UnicastContentSubject.create(1000, TimeUnit.MILLISECONDS)
+        );
+        final URI uri = MesosClient.getUriFromRedirectResponse(mesosUri, response);
+        assertThat(uri).isEqualTo(URI.create("http://127.1.0.2:5050/api/v1/scheduler"));
+    }
+
+    @Test
+    public void testGetUriFromRedirectResponse_404() throws Exception {
+        final URI mesosUri = URI.create("http://127.1.0.1:5050/api/v1/scheduler");
+        final DefaultHttpResponse nettyResponse = new DefaultHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.NOT_FOUND);
+        final HttpClientResponse<ByteBuf> response = new HttpClientResponse<>(
+            nettyResponse,
+            UnicastContentSubject.create(1000, TimeUnit.MILLISECONDS)
+        );
+        final URI uri = MesosClient.getUriFromRedirectResponse(mesosUri, response);
+        assertThat(uri).isEqualTo(URI.create("http://127.1.0.1:5050/api/v1/scheduler"));
+    }
+
+    @Test
+    public void testGetUriFromRedirectResponse_200() throws Exception {
+        final URI mesosUri = URI.create("http://127.1.0.1:5050/api/v1/scheduler");
+        final DefaultHttpResponse nettyResponse = new DefaultHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.OK);
+        final HttpClientResponse<ByteBuf> response = new HttpClientResponse<>(
+            nettyResponse,
+            UnicastContentSubject.create(1000, TimeUnit.MILLISECONDS)
+        );
+        final URI uri = MesosClient.getUriFromRedirectResponse(mesosUri, response);
+        assertThat(uri).isEqualTo(URI.create("http://127.1.0.1:5050/api/v1/scheduler"));
+    }
+
     @NotNull
     private static Map<String, String> headersToMap(@NotNull final HttpRequestHeaders headers) {
         final HashMap<String, String> map = Maps.newHashMap();
