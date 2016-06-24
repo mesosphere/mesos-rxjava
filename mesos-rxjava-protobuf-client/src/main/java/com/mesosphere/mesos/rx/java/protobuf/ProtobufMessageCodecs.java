@@ -37,4 +37,14 @@ public final class ProtobufMessageCodecs {
         Protos.Event::parseFrom, Protos.Event::parseFrom
     );
 
+    /** A {@link MessageCodec} for {@link org.apache.mesos.v1.executor.Protos.Call Call}. */
+    public static final MessageCodec<org.apache.mesos.v1.executor.Protos.Call> EXECUTOR_CALL = new ProtoCodec<>(
+        org.apache.mesos.v1.executor.Protos.Call::parseFrom, org.apache.mesos.v1.executor.Protos.Call::parseFrom
+    );
+
+    /** A {@link MessageCodec} for {@link org.apache.mesos.v1.executor.Protos.Event Event}. */
+    public static final MessageCodec<org.apache.mesos.v1.executor.Protos.Event> EXECUTOR_EVENT = new ProtoCodec<>(
+        org.apache.mesos.v1.executor.Protos.Event::parseFrom, org.apache.mesos.v1.executor.Protos.Event::parseFrom
+    );
+
 }

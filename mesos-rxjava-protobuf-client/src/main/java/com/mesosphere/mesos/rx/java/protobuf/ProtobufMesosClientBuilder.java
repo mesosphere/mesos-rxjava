@@ -38,4 +38,20 @@ public final class ProtobufMesosClientBuilder {
             .receiveCodec(ProtobufMessageCodecs.SCHEDULER_EVENT)
             ;
     }
+
+    /**
+     * @return  An initial {@link MesosClientBuilder} that will use protobuf
+     *          for the {@link org.apache.mesos.v1.executor.Protos.Call Call} and
+     *          {@link org.apache.mesos.v1.executor.Protos.Event Event} messages.
+     */
+    @NotNull
+    public static MesosClientBuilder<
+        org.apache.mesos.v1.executor.Protos.Call,
+        org.apache.mesos.v1.executor.Protos.Event
+        > executorUsingProtos() {
+        return MesosClientBuilder.<org.apache.mesos.v1.executor.Protos.Call, org.apache.mesos.v1.executor.Protos.Event>newBuilder()
+            .sendCodec(ProtobufMessageCodecs.EXECUTOR_CALL)
+            .receiveCodec(ProtobufMessageCodecs.EXECUTOR_EVENT)
+            ;
+    }
 }
