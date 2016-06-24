@@ -16,7 +16,6 @@
 
 package com.mesosphere.mesos.rx.java.protobuf;
 
-import com.google.protobuf.InvalidProtocolBufferException;
 import org.apache.mesos.v1.scheduler.Protos;
 import org.jetbrains.annotations.NotNull;
 import org.junit.Test;
@@ -24,7 +23,6 @@ import org.junit.Test;
 import java.util.Base64;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 
 public final class ProtobufMessageCodecsTest {
 
@@ -64,19 +62,6 @@ public final class ProtobufMessageCodecsTest {
         assertThat(HEARTBEAT).isEqualTo(ProtobufMessageCodecs.SCHEDULER_EVENT.decode(SERIALIZED_HEARTBEAT));
         assertThat(OFFER).isEqualTo(ProtobufMessageCodecs.SCHEDULER_EVENT.decode(SERIALIZED_OFFER));
         assertThat(SUBSCRIBED).isEqualTo(ProtobufMessageCodecs.SCHEDULER_EVENT.decode(SERIALIZED_SUBSCRIBED));
-    }
-
-    @Test
-    public void testDecodeFailure() {
-        assertDecodeFailure(SERIALIZED_HEARTBEAT);
-        assertDecodeFailure(SERIALIZED_OFFER);
-        assertDecodeFailure(SERIALIZED_SUBSCRIBED);
-    }
-
-    private static void assertDecodeFailure(@NotNull final byte[] protoBytes) {
-        assertThatExceptionOfType(RuntimeException.class)
-            .isThrownBy(() -> ProtobufMessageCodecs.SCHEDULER_CALL.decode(protoBytes))
-            .withCauseExactlyInstanceOf(InvalidProtocolBufferException.class);
     }
 
 }
