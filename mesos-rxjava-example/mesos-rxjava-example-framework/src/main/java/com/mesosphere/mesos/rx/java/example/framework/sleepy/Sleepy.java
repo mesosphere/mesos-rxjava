@@ -57,11 +57,12 @@ public final class Sleepy {
 
     /**
      * <pre>{@code
-     * Usage: java -cp <application-jar> com.mesosphere.mesos.rx.java.example.framework.sleepy.Sleepy <mesos-uri> <cpus-per-task>
-     * mesos-uri        The fully qualified URI to the Mesos Master. (http://localhost:5050/api/v1/scheduler)
-     * cpus-per-task    The number of CPUs each task should claim from an offer.
+     * Usage: java -cp <application-jar> com.mesosphere.mesos.rx.java.example.framework.sleepy.Sleepy <mesos-uri> <cpus-per-task> <mesos-resource-role>
+     * mesos-uri            The fully qualified URI to the Mesos Master. (http://localhost:5050/api/v1/scheduler)
+     * cpus-per-task        The number of CPUs each task should claim from an offer.
+     * mesos-resources-role The resource role to use when registering with mesos and evaluating offers
      * }</pre>
-     * @param args    Application arguments mesos-uri and cpus-per-task.
+     * @param args    Application arguments {@code mesos-uri}, {@code cpus-per-task} and {@code mesos-resource-role}.
      */
     public static void main(final String... args) {
         try {
@@ -75,14 +76,14 @@ public final class Sleepy {
     static void _main(final String fwId, final String... args) throws Throwable {
         if (args.length != 3) {
             final String className = Sleepy.class.getCanonicalName();
-            System.err.println("Usage: java -cp <application-jar> " + className + " <mesos-uri> <cpus-per-task> <framework-role>");
+            System.err.println("Usage: java -cp <application-jar> " + className + " <mesos-uri> <cpus-per-task> <mesos-resource-role>");
             System.exit(1);
         }
 
         final URI mesosUri = URI.create(args[0]);
         final double cpusPerTask = Double.parseDouble(args[1]);
         final String role = args[2];
-        checkState(role != null && !role.trim().isEmpty(), "<framework-role> must not be empty");
+        checkState(role != null && !role.trim().isEmpty(), "<mesos-resource-role> must not be empty");
         final FrameworkID frameworkID = FrameworkID.newBuilder().setValue(fwId).build();
         final State<FrameworkID, TaskID, TaskState> stateObject = new State<>(frameworkID, role.trim(), cpusPerTask, 16);
 
