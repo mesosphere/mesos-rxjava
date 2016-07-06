@@ -133,7 +133,7 @@ public final class Sleepy {
                     .map(Optional::of);
 
                 final Observable<Optional<SinkOperation<Call>>> errorLogger = events
-                    .filter(event -> event.getType() == Event.Type.UPDATE && event.getUpdate().getStatus().getState() == TaskState.TASK_ERROR)
+                    .filter(event -> event.getType() == Event.Type.ERROR || (event.getType() == Event.Type.UPDATE && event.getUpdate().getStatus().getState() == TaskState.TASK_ERROR))
                     .doOnNext(e -> LOGGER.warn("Task Error: {}", ProtoUtils.protoToString(e)))
                     .map(e -> Optional.empty());
 

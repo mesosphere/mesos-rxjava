@@ -410,7 +410,6 @@ public final class MesosClient<Send, Receive> {
 
             final String userInfo = mesosUri.getUserInfo();
             if (userInfo != null) {
-                //Won't actually work until https://issues.apache.org/jira/browse/MESOS-3923 is fixed
                 request = request.withHeader(
                     HttpHeaders.Names.AUTHORIZATION,
                     String.format("Basic %s", Base64.getEncoder().encodeToString(userInfo.getBytes()))
