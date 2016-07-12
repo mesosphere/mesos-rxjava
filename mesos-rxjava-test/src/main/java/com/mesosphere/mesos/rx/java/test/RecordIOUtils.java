@@ -16,17 +16,18 @@
 
 package com.mesosphere.mesos.rx.java.test;
 
-import com.google.common.base.Charsets;
 import org.jetbrains.annotations.NotNull;
 
-import static com.google.common.base.Preconditions.checkNotNull;
+import java.nio.charset.StandardCharsets;
+
+import static com.mesosphere.mesos.rx.java.util.Validations.checkNotNull;
 
 /**
  * A set of utilities for dealing with the RecordIO format.
  * @see <a href="https://github.com/apache/mesos/blob/master/docs/scheduler-http-api.md#recordio-response-format" target="_blank">RecordIO</a>
  */
 public final class RecordIOUtils {
-    private static final byte NEW_LINE_BYTE = Charsets.UTF_8.encode("\n").array()[0];
+    private static final byte NEW_LINE_BYTE = "\n".getBytes(StandardCharsets.UTF_8)[0];
     private static final int NEW_LINE_BYTE_SIZE = 1;
 
     private RecordIOUtils() {}
@@ -34,7 +35,7 @@ public final class RecordIOUtils {
     @NotNull
     public static byte[] createChunk(@NotNull final byte[] bytes) {
         checkNotNull(bytes, "bytes must not be null");
-        final byte[] messageSize = Charsets.UTF_8.encode(Integer.toString(bytes.length)).array();
+        final byte[] messageSize = Integer.toString(bytes.length).getBytes(StandardCharsets.UTF_8);
 
         final int messageSizeLength = messageSize.length;
         final int chunkSize = messageSizeLength + NEW_LINE_BYTE_SIZE + bytes.length;

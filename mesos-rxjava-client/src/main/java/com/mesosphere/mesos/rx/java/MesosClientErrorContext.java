@@ -16,7 +16,6 @@
 
 package com.mesosphere.mesos.rx.java;
 
-import com.google.common.base.Joiner;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
@@ -29,7 +28,6 @@ import java.util.Objects;
  * present in the response.
  */
 public final class MesosClientErrorContext {
-    private static final Joiner MAP_JOINER = Joiner.on(",").skipNulls();
 
     private final int statusCode;
     private final String message;
@@ -90,7 +88,6 @@ public final class MesosClientErrorContext {
         return "MesosClientErrorContext{" +
             "statusCode=" + statusCode +
             ", message='" + message + '\'' +
-            ", headers=" + MAP_JOINER.join(headers) +
             '}';
     }
 

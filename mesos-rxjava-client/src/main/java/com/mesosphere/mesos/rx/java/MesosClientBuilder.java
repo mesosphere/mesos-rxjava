@@ -25,7 +25,7 @@ import java.net.URI;
 import java.util.Optional;
 import java.util.function.Function;
 
-import static com.google.common.base.Preconditions.checkNotNull;
+import static com.mesosphere.mesos.rx.java.util.Validations.checkNotNull;
 
 /**
  * Builder used to create a {@link MesosClient}.

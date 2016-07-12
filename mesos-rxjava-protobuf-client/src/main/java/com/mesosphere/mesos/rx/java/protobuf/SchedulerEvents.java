@@ -16,11 +16,12 @@
 
 package com.mesosphere.mesos.rx.java.protobuf;
 
-import com.google.common.collect.Lists;
 import com.google.protobuf.ByteString;
 import org.apache.mesos.v1.scheduler.Protos;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+
+import java.util.Collections;
 
 /**
  * A set of factory methods that make {@link Protos.Event Event}s easier to create.
@@ -84,7 +85,7 @@ public final class SchedulerEvents {
             .setType(Protos.Event.Type.OFFERS)
             .setOffers(
                 Protos.Event.Offers.newBuilder()
-                    .addAllOffers(Lists.newArrayList(
+                    .addAllOffers(Collections.singletonList(
                         org.apache.mesos.v1.Protos.Offer.newBuilder()
                             .setHostname(hostname)
                             .setId(org.apache.mesos.v1.Protos.OfferID.newBuilder().setValue(offerId))

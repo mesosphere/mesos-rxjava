@@ -16,7 +16,6 @@
 
 package com.mesosphere.mesos.rx.java.util;
 
-import com.google.common.base.Joiner;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Arrays;
@@ -29,8 +28,6 @@ import java.util.stream.Collectors;
  * This class represents an HTTP User-Agent Header
  */
 public final class UserAgent {
-
-    private static final Joiner JOINER = Joiner.on(" ").skipNulls();
 
     @NotNull
     private final List<UserAgentEntry> entries;
@@ -46,7 +43,10 @@ public final class UserAgent {
                     .map(f -> f.apply(this.getClass()))
                     .collect(Collectors.toList())
             );
-        this.toStringValue = JOINER.join(this.entries);
+        this.toStringValue = this.entries
+            .stream()
+            .map(UserAgentEntry::toString)
+            .collect(Collectors.joining(" "));
     }
 
     @NotNull
