@@ -20,7 +20,7 @@ import org.jetbrains.annotations.NotNull;
 import rx.functions.Action0;
 import rx.functions.Action1;
 
-import static com.google.common.base.Preconditions.checkNotNull;
+import static com.mesosphere.mesos.rx.java.util.Validations.checkNotNull;
 
 /**
  * A simple object that represents a {@link T} that is to be sent to Mesos.

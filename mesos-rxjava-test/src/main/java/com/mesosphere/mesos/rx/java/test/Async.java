@@ -20,12 +20,11 @@ import io.netty.util.concurrent.DefaultThreadFactory;
 import org.jetbrains.annotations.NotNull;
 import org.junit.rules.Verifier;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
-
-import static com.google.common.collect.Lists.newArrayList;
 
 /**
  * A JUnit {@link org.junit.rules.TestRule Rule} that provides a convenience method to run async tasks.
@@ -65,7 +64,7 @@ public final class Async extends Verifier {
     public Async() {
         counter = new AtomicInteger(0);
         executor = Executors.newCachedThreadPool(new DefaultThreadFactory(Async.class));
-        tasks = Collections.synchronizedList(newArrayList());
+        tasks = Collections.synchronizedList(new ArrayList<>());
     }
 
     /**

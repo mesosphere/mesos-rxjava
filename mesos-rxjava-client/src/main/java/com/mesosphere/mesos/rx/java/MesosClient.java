@@ -16,7 +16,6 @@
 
 package com.mesosphere.mesos.rx.java;
 
-import com.google.common.annotations.VisibleForTesting;
 import com.mesosphere.mesos.rx.java.recordio.RecordIOOperator;
 import com.mesosphere.mesos.rx.java.util.MessageCodec;
 import com.mesosphere.mesos.rx.java.util.UserAgent;
@@ -75,7 +74,7 @@ public final class MesosClient<Send, Receive> {
     private final Function<Observable<Receive>, Observable<Optional<SinkOperation<Send>>>> streamProcessor;
 
     @NotNull
-    @VisibleForTesting
+    // @VisibleForTesting
     final Func1<Send, Observable<HttpClientRequest<ByteBuf>>> createPost;
     @NotNull
     private final UserAgent userAgent;
@@ -181,7 +180,7 @@ public final class MesosClient<Send, Receive> {
     }
 
     @NotNull
-    @VisibleForTesting
+    // @VisibleForTesting
     static URI getUriFromRedirectResponse(final @NotNull URI mesosUri, @NotNull final HttpClientResponse<ByteBuf> redirectResponse) {
         if (redirectResponse.getStatus().equals(HttpResponseStatus.TEMPORARY_REDIRECT)) {
             final String location = redirectResponse.getHeaders().get("Location");
@@ -195,7 +194,7 @@ public final class MesosClient<Send, Receive> {
     }
 
     @NotNull
-    @VisibleForTesting
+    // @VisibleForTesting
     static URI resolveRelativeUri(final @NotNull URI mesosUri, final String location) {
         final URI relativeUri = mesosUri.resolve(location);
         try {
@@ -214,13 +213,13 @@ public final class MesosClient<Send, Receive> {
     }
 
     @NotNull
-    @VisibleForTesting
+    // @VisibleForTesting
     static String createRedirectUri(@NotNull final URI uri) {
         return uri.toString().replaceAll("/api/v1/(?:scheduler|executor)", "/redirect");
     }
 
     @NotNull
-    @VisibleForTesting
+    // @VisibleForTesting
     static <Send> Func1<HttpClientResponse<ByteBuf>, Observable<ByteBuf>> verifyResponseOk(
         @NotNull final Send subscription,
         @NotNull final AtomicReference<String> mesosStreamId,
@@ -272,7 +271,7 @@ public final class MesosClient<Send, Receive> {
         };
     }
 
-    @VisibleForTesting
+    // @VisibleForTesting
     static int getPort(@NotNull final URI uri) {
         final int uriPort = uri.getPort();
         if (uriPort > 0) {
@@ -331,7 +330,7 @@ public final class MesosClient<Send, Receive> {
      * item onto a blocking queue. {@link Callable#call()} will then block until there is an item on the queue.
      * If the item in the queue contains an exception, that exception will be throw back up to the user.
      */
-    @VisibleForTesting
+    // @VisibleForTesting
     static final class SubscriberDecorator<T> extends Subscriber<T> implements Callable<Optional<Throwable>> {
         @NotNull
         private final Subscriber<T> delegate;
@@ -388,7 +387,7 @@ public final class MesosClient<Send, Receive> {
     }
 
     @NotNull
-    @VisibleForTesting
+    // @VisibleForTesting
     static <Send, Receive> Func1<Send, Observable<HttpClientRequest<ByteBuf>>> curryCreatePost(
         @NotNull final URI mesosUri,
         @NotNull final MessageCodec<Send> sendCodec,

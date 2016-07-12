@@ -16,9 +16,6 @@
 
 package com.mesosphere.mesos.rx.java.recordio;
 
-import com.google.common.annotations.VisibleForTesting;
-import com.google.common.base.Charsets;
-import com.google.common.primitives.Bytes;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufInputStream;
 import org.jetbrains.annotations.NotNull;
@@ -27,10 +24,9 @@ import org.slf4j.LoggerFactory;
 import rx.Observable.Operator;
 import rx.Subscriber;
 
-import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.List;
-
-import static com.google.common.collect.Lists.newArrayList;
 
 /**
  * An {@link Operator} that can be applied to a stream of {@link ByteBuf} and produce
@@ -59,7 +55,6 @@ public final class RecordIOOperator implements Operator<byte[], ByteBuf> {
      *     2gb. This is because arrays are indexed with signed 32-bit integers.
      * </i>
      */
-    @VisibleForTesting
     static final class RecordIOSubscriber extends Subscriber<ByteBuf> {
         private static final Logger LOGGER = LoggerFactory.getLogger(RecordIOSubscriber.class);
 
@@ -77,7 +72,7 @@ public final class RecordIOOperator implements Operator<byte[], ByteBuf> {
          * {@link Long#valueOf(String, int)}.
          */
         @NotNull
-        final List<Byte> messageSizeBytesBuffer = newArrayList();
+        final List<Byte> messageSizeBytesBuffer = new ArrayList<>();
 
         /**
          * Flag used to signify that we've reached the point in the stream that we should have
@@ -141,9 +136,9 @@ public final class RecordIOOperator implements Operator<byte[], ByteBuf> {
 
                         // Allocate the byte[] for the message and get ready to read it
                         if (allSizeBytesBuffered) {
-                            final byte[] bytes = Bytes.toArray(messageSizeBytesBuffer);
+                            final byte[] bytes = getByteArray(messageSizeBytesBuffer);
                             allSizeBytesBuffered = false;
-                            final String sizeString = Charsets.UTF_8.decode(ByteBuffer.wrap(bytes)).toString();
+                            final String sizeString = new String(bytes, StandardCharsets.UTF_8);
                             messageSizeBytesBuffer.clear();
                             final long l = Long.valueOf(sizeString, 10);
                             if (l > Integer.MAX_VALUE) {
@@ -186,6 +181,14 @@ public final class RecordIOOperator implements Operator<byte[], ByteBuf> {
         @Override
         public void onCompleted() {
             child.onCompleted();
+        }
+
+        private static byte[] getByteArray(@NotNull final List<Byte> list) {
+            final byte[] bytes = new byte[list.size()];
+            for (int i = 0; i < list.size(); i++) {
+                bytes[i] = list.get(i);
+            }
+            return bytes;
         }
 
     }

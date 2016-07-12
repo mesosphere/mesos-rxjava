@@ -47,6 +47,11 @@
             <artifactId>mesos-rxjava-test</artifactId>
         </dependency>
         <dependency>
+            <groupId>com.google.guava</groupId>
+            <artifactId>guava</artifactId>
+            <scope>compile</scope>
+        </dependency>
+        <dependency>
             <groupId>org.apache.mesos</groupId>
             <artifactId>mesos</artifactId>
         </dependency>

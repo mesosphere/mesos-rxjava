@@ -21,9 +21,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static com.google.common.collect.Maps.newConcurrentMap;
 import static com.mesosphere.mesos.rx.java.protobuf.ProtoUtils.protoToString;
 
 final class State<FwId, TaskId, TaskState> {
@@ -54,7 +54,7 @@ final class State<FwId, TaskId, TaskState> {
         this.resourceRole = resourceRole;
         this.cpusPerTask = cpusPerTask;
         this.memMbPerTask = memMbPerTask;
-        this.taskStates = newConcurrentMap();
+        this.taskStates = new ConcurrentHashMap<>();
     }
 
     @NotNull

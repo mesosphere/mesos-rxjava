@@ -16,8 +16,6 @@
 
 package com.mesosphere.mesos.rx.java.test;
 
-import com.google.common.collect.Lists;
-import com.google.common.io.ByteStreams;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
@@ -27,7 +25,12 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.net.*;
+import java.net.InetSocketAddress;
+import java.net.ServerSocket;
+import java.net.Socket;
+import java.net.SocketException;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -88,9 +91,9 @@ public final class TcpSocketProxy implements Closeable {
         this.listen = listen;
         this.dest = destination;
 
-        sockets = Lists.newCopyOnWriteArrayList();
+        sockets = Collections.synchronizedList(new ArrayList<>());
         socketRef = new AtomicReference<>();
-        futures = Lists.newCopyOnWriteArrayList();
+        futures = Collections.synchronizedList(new ArrayList<>());
         shutdown = new AtomicBoolean(false);
         startupCountDownLatch = new CountDownLatch(1);
         shutdownCountDownLatch = new CountDownLatch(1);
@@ -199,20 +202,8 @@ public final class TcpSocketProxy implements Closeable {
                     final Socket downStream = new Socket(dest.getAddress(), dest.getPort());
                     final OutputStream send = downStream.getOutputStream();
                     final InputStream ret = downStream.getInputStream();
-                    final Future<?> f1 = service.submit(() -> {
-                        try {
-                            ByteStreams.copy(in, send);
-                        } catch (IOException e) {
-                            throw new RuntimeException(e);
-                        }
-                    });
-                    final Future<?> f2 = service.submit(() -> {
-                        try {
-                            ByteStreams.copy(ret, out);
-                        } catch (IOException e) {
-                            throw new RuntimeException(e);
-                        }
-                    });
+                    final Future<?> f1 = service.submit(new ByteCopyRunnable(in, send));
+                    final Future<?> f2 = service.submit(new ByteCopyRunnable(ret, out));
                     sockets.add(accept);
                     sockets.add(downStream);
                     futures.add(f1);
@@ -266,6 +257,31 @@ public final class TcpSocketProxy implements Closeable {
                 throw new RuntimeException(e);
             } finally {
                 shutdownCountDownLatch.countDown();
+            }
+        }
+    }
+
+    private static final class ByteCopyRunnable implements Runnable {
+        @NotNull
+        private final InputStream in;
+        @NotNull
+        private final OutputStream out;
+
+        public ByteCopyRunnable(@NotNull final InputStream in, @NotNull final OutputStream out) {
+            this.in = in;
+            this.out = out;
+        }
+
+        @Override
+        public void run() {
+            try {
+                final byte[] buffer = new byte[0x1000]; // 4k
+                int read;
+                while ((read = in.read(buffer)) != -1) {
+                    out.write(buffer, 0, read);
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
             }
         }
     }

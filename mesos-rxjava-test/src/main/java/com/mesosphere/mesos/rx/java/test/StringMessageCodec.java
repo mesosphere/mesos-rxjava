@@ -16,13 +16,14 @@
 
 package com.mesosphere.mesos.rx.java.test;
 
-import com.google.common.io.CharStreams;
 import com.mesosphere.mesos.rx.java.util.MessageCodec;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.Reader;
+import java.nio.CharBuffer;
 import java.nio.charset.StandardCharsets;
 
 /**
@@ -52,7 +53,15 @@ public final class StringMessageCodec implements MessageCodec<String> {
     @Override
     public String decode(@NotNull final InputStream in) {
         try {
-            return CharStreams.toString(new InputStreamReader(in, StandardCharsets.UTF_8));
+            final StringBuilder sb = new StringBuilder();
+            final Reader reader = new InputStreamReader(in, StandardCharsets.UTF_8);
+            final CharBuffer buffer = CharBuffer.allocate(0x800);// 2k chars (4k bytes)
+            while (reader.read(buffer) != -1) {
+                buffer.flip();
+                sb.append(buffer);
+                buffer.clear();
+            }
+            return sb.toString();
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
