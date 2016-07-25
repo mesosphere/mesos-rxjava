@@ -420,4 +420,9 @@ public final class MesosClient<Send, Receive> {
             );
         };
     }
+
+    @NotNull
+    public String getMesosStreamId() {
+        return mesosStreamId.get();
+    }
 }
