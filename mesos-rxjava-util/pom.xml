@@ -21,7 +21,7 @@
     <parent>
         <artifactId>mesos-rxjava</artifactId>
         <groupId>com.mesosphere.mesos.rx.java</groupId>
-        <version>0.1.0-SNAPSHOT</version>
+        <version>0.1.0</version>
     </parent>
     <modelVersion>4.0.0</modelVersion>
 
@@ -39,7 +39,7 @@
 
     <dependencies>
         <!--
-            This project should NEVER have a dependency on any other modules from this project.
+            This module should NEVER have a dependency on any other modules from this project.
             This modules is the "lowest" module in the dependency tree and is used by all other
             modules, as such this module can not depend on any other module since it will create
             a cycle.

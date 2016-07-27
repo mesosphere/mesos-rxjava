@@ -1,9 +1,8 @@
-Mesos RxJava [![Build Status](https://teamcity.mesosphere.io/guestAuth/app/rest/builds/buildType:(id:Oss_Mesos_MesosRxJava_Ci)/statusIcon)](https://teamcity.mesosphere.io/viewType.html?buildTypeId=Oss_Mesos_MesosRxJava_Ci&guest=1) [![Stories in Ready](https://badge.waffle.io/mesosphere/mesos-rxjava.png?label=in+progress&title=In+Progress)](https://waffle.io/mesosphere/mesos-rxjava)
+Mesos RxJava [![Build Status](https://teamcity.mesosphere.io/guestAuth/app/rest/builds/buildType:(id:Oss_Mesos_MesosRxJava_Ci)/statusIcon)](https://teamcity.mesosphere.io/viewType.html?buildTypeId=Oss_Mesos_MesosRxJava_Ci&guest=1) [![In Progress](https://badge.waffle.io/mesosphere/mesos-rxjava.png?label=in+progress&title=In+Progress)](https://waffle.io/mesosphere/mesos-rxjava)
 ============
 
 Mesos RxJava is a library that provides a Reactive Client (via [RxJava](https://github.com/ReactiveX/RxJava)) atop
-Apache Mesos' new HTTP APIs.  As the Apache Mesos HTTP APIs are experimental this library should also be considered
-experimental. _The project reserves the right to change any interface at any time until the first release is made._
+Apache Mesos' new HTTP APIs.
 
 ## Background
 
@@ -22,13 +21,6 @@ are modeled as an event stream; as such a scheduler can be modeled as an
 [`rx.Observable<Event>`](http://reactivex.io/RxJava/javadoc/index.html?rx/Observable.html). Once created, the scheduler
 is able to use the powerful stream manipulation functions provided by RxJava to react to events.
 
-
-## Project Status
-
-The project is still early in terms of development but it is possible to launch tasks. The issues section of this repo
-will soon be updated with tasks that will require work and is the best place to check on the status toward the first
-release.
-
 ## Javadocs
 
 Javadocs for the last successful build of `master` can be found [here](https://teamcity.mesosphere.io/guestAuth/repository/download/Oss_Mesos_MesosRxJava_Javadoc/lastSuccessful/javadoc.zip%21/index.html)
@@ -36,9 +28,35 @@ Javadocs for the last successful build of `master` can be found [here](https://t
 
 ## Maven Coordinates
 
-Releases will be published to Maven Central. Snapshots will be published to Sonatypes OSS Repo.
+### Stable Release
 
-### Snapshot Repo
+Releases are available in Maven Central.
+
+### Protobuf Client
+
+```
+<dependency>
+    <groupId>com.mesosphere.mesos.rx.java</groupId>
+    <artifactId>mesos-rxjava-protobuf-client</artifactId>
+    <version>0.1.0</version>
+</dependency>
+```
+
+### Testing Tools
+
+```
+<dependency>
+    <groupId>com.mesosphere.mesos.rx.java</groupId>
+    <artifactId>mesos-rxjava-test</artifactId>
+    <version>0.1.0</version>
+    <scope>test</scope>
+</dependency>
+```
+
+
+### Snapshot Release
+
+#### Snapshot Repo
 
 Version `0.1.0-SNAPSHOT` has been published to the Sonatype OSS Snapshot Repo.
 ```
@@ -53,7 +71,7 @@ Version `0.1.0-SNAPSHOT` has been published to the Sonatype OSS Snapshot Repo.
 </repositories>
 ```
 
-### Protobuf Client
+#### Protobuf Client
 
 ```
 <dependency>
@@ -63,13 +81,14 @@ Version `0.1.0-SNAPSHOT` has been published to the Sonatype OSS Snapshot Repo.
 </dependency>
 ```
 
-### Testing Tools
+#### Testing Tools
 
 ```
 <dependency>
     <groupId>com.mesosphere.mesos.rx.java</groupId>
     <artifactId>mesos-rxjava-test</artifactId>
     <version>0.1.0-SNAPSHOT</version>
+    <scope>test</scope>
 </dependency>
 ```
 
