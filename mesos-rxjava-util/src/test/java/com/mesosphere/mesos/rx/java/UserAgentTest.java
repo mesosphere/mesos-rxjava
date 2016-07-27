@@ -39,9 +39,9 @@ public final class UserAgentTest {
     @Test
     public void testArtifactPropertyResolutionFunctionsCorrectly_maven() throws Exception {
         final UserAgent agent = new UserAgent(
-            userAgentEntryForMavenArtifact("io.netty", "netty-codec-http")
+            userAgentEntryForMavenArtifact("org.assertj", "assertj-core")
         );
-        assertThat(agent.toString()).matches(Pattern.compile("netty-codec-http/\\d+\\.\\d+\\.\\d+\\.Final"));
+        assertThat(agent.toString()).matches(Pattern.compile("assertj-core/\\d+\\.\\d+\\.\\d+"));
     }
 
     @Test
