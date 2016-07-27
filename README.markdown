@@ -77,7 +77,7 @@ Version `0.1.0-SNAPSHOT` has been published to the Sonatype OSS Snapshot Repo.
 <dependency>
     <groupId>com.mesosphere.mesos.rx.java</groupId>
     <artifactId>mesos-rxjava-protobuf-client</artifactId>
-    <version>0.1.0-SNAPSHOT</version>
+    <version>0.1.1-SNAPSHOT</version>
 </dependency>
 ```
 
@@ -87,7 +87,7 @@ Version `0.1.0-SNAPSHOT` has been published to the Sonatype OSS Snapshot Repo.
 <dependency>
     <groupId>com.mesosphere.mesos.rx.java</groupId>
     <artifactId>mesos-rxjava-test</artifactId>
-    <version>0.1.0-SNAPSHOT</version>
+    <version>0.1.1-SNAPSHOT</version>
     <scope>test</scope>
 </dependency>
 ```
