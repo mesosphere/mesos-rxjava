@@ -1,6 +1,6 @@
 {
   "name": "Mesos RxJava",
   "tagline": "RxJava client for Apache Mesos HTTP APIs",
-  "body": "## Stub",
+  "body": "Mesos RxJava\n============\n\nMesos RxJava is a library that provides a Reactive Client (via [RxJava](https://github.com/ReactiveX/RxJava)) atop\nApache Mesos' HTTP APIs.\n\n## Stable Release\n\nReleases are available in Maven Central.\n\n### Javadocs\n\nJavadocs for 0.1.0 can be found [here](./javadocs/0.1.0)\n\n\n### Protobuf Client\n\n```\n<dependency>\n    <groupId>com.mesosphere.mesos.rx.java</groupId>\n    <artifactId>mesos-rxjava-protobuf-client</artifactId>\n    <version>0.1.0</version>\n</dependency>\n```\n\n### Testing Tools\n\n```\n<dependency>\n    <groupId>com.mesosphere.mesos.rx.java</groupId>\n    <artifactId>mesos-rxjava-test</artifactId>\n    <version>0.1.0</version>\n    <scope>test</scope>\n</dependency>\n```\n",
   "note": "Don't delete this file! It's used internally to help with page regeneration."
 }
