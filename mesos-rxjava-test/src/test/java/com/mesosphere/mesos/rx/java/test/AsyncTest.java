@@ -16,11 +16,16 @@
 
 package com.mesosphere.mesos.rx.java.test;
 
+import com.google.common.collect.Sets;
 import org.junit.Test;
+import org.junit.runners.model.MultipleFailureException;
 
 import java.io.IOException;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.Assert.fail;
 
 public final class AsyncTest {
 
@@ -101,5 +106,36 @@ public final class AsyncTest {
         async.run(() -> assertThat(true).isTrue());
 
         async.verify();
+    }
+
+    @Test
+    public void multipleExceptionReportedWhenTheyOccur() {
+        final Async async = new Async();
+        final IllegalStateException exception1 = new IllegalStateException("exception-1");
+        final IllegalStateException exception2 = new IllegalStateException("exception-2");
+        final IllegalStateException exception3 = new IllegalStateException("exception-3");
+        async.run(() -> {
+            throw exception1;
+        });
+        async.run(() -> {
+            throw exception2;
+        });
+        async.run(() -> {
+            throw exception3;
+        });
+
+        try {
+            async.verify();
+            fail("Exception should have been thrown in verify");
+        } catch (MultipleFailureException mfe) {
+            final Set<String> errorMessages = mfe.getFailures().stream()
+                .map(Throwable::getCause)
+                .map(Throwable::getMessage)
+                .collect(Collectors.toSet());
+            assertThat(errorMessages).isEqualTo(Sets.newHashSet("exception-1", "exception-2", "exception-3"));
+            assertThat(mfe.getMessage()).contains("Error while running Async: exception-1");
+        } catch (Throwable e) {
+            fail("Expected MultipleFailureException but got: " + e.getClass().getName());
+        }
     }
 }
