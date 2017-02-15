@@ -36,6 +36,7 @@ import rx.functions.Func1;
 
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.List;
 import java.util.Map;
@@ -238,35 +239,49 @@ public final class MesosClient<Send, Receive> {
                 return resp.getContent();
             } else {
                 final HttpResponseHeaders headers = resp.getHeaders();
-                final List<Map.Entry<String, String>> entries = headers.entries();
-                resp.ignoreContent();
-
-                final MesosClientErrorContext context = new MesosClientErrorContext(code, entries);
-                if (code == 200) {
-                    // this means that even though we got back a 200 it's not the sort of response we were expecting
-                    // For example hitting an endpoint that returns an html document instead of a document of type
-                    // `receiveMediaType`
-                    throw new MesosException(
-                        subscription,
-                        context.withMessage(
-                            String.format(
-                                "Response had Content-Type \"%s\" expected \"%s\"",
-                                contentType,
-                                receiveMediaType
-                            )
-                        )
-                    );
-                } else if (400 <= code && code < 500) {
-                    throw new Mesos4xxException(subscription, context);
-                } else if (500 <= code && code < 600) {
-                    throw new Mesos5xxException(subscription, context);
+                Observable<String> errMsgObservable;
+                if (headers.isContentLengthSet() && headers.getContentLength() > 0 ) {
+                    if (contentType != null && contentType.startsWith("text/plain")) {
+                        errMsgObservable = resp.getContent()
+                            .map(r -> r.toString(StandardCharsets.UTF_8));
+                    } else {
+                        final String errMsg = String.format("Not attempting to decode error response of type '%s' as string", contentType);
+                        errMsgObservable = Observable.just(errMsg);
+                        resp.ignoreContent();
+                    }
                 } else {
-                    LOGGER.warn("Unhandled error: context = {}", context);
-                    // This shouldn't actually ever happen, but it's here for completeness of the if-else tree
-                    // that always has to result in an exception being thrown so the compiler is okay with this
-                    // lambda
-                    throw new IllegalStateException("Unhandled error");
+                    errMsgObservable = Observable.just("");
                 }
+
+                return errMsgObservable.flatMap(msg -> {
+                    final List<Map.Entry<String, String>> entries = headers.entries();
+                    final MesosClientErrorContext context = new MesosClientErrorContext(code, msg, entries);
+                    if (code == 200) {
+                        // this means that even though we got back a 200 it's not the sort of response we were expecting
+                        // For example hitting an endpoint that returns an html document instead of a document of type
+                        // `receiveMediaType`
+                        throw new MesosException(
+                            subscription,
+                            context.withMessage(
+                                String.format(
+                                    "Response had Content-Type \"%s\" expected \"%s\"",
+                                    contentType,
+                                    receiveMediaType
+                                )
+                            )
+                        );
+                    } else if (400 <= code && code < 500) {
+                        throw new Mesos4xxException(subscription, context);
+                    } else if (500 <= code && code < 600) {
+                        throw new Mesos5xxException(subscription, context);
+                    } else {
+                        LOGGER.warn("Unhandled error: context = {}", context);
+                        // This shouldn't actually ever happen, but it's here for completeness of the if-else tree
+                        // that always has to result in an exception being thrown so the compiler is okay with this
+                        // lambda
+                        throw new IllegalStateException("Unhandled error");
+                    }
+                });
             }
         };
     }

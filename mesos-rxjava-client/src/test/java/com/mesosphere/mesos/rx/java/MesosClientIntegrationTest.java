@@ -29,8 +29,8 @@ import org.junit.Test;
 import org.junit.rules.Timeout;
 
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.util.Optional;
-import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -43,22 +43,55 @@ public final class MesosClientIntegrationTest {
 
     @Test
     public void testStreamDoesNotRunWhenSubscribeFails_mesos4xxResponse() throws Throwable {
+        final String errorMessage = "Error message that should come from the server";
         final RequestHandler<ByteBuf, ByteBuf> handler = (request, response) -> {
             response.setStatus(HttpResponseStatus.BAD_REQUEST);
+            final byte[] msgBytes = errorMessage.getBytes(StandardCharsets.UTF_8);
+            response.getHeaders().setHeader("Content-Length", msgBytes.length);
+            response.getHeaders().setHeader("Content-Type", "text/plain;charset=utf-8");
+            response.writeBytes(msgBytes);
             return response.close();
         };
         final HttpServer<ByteBuf, ByteBuf> server = RxNetty.createHttpServer(0, handler);
         server.start();
         final URI uri = URI.create(String.format("http://localhost:%d/api/v1/scheduler", server.getServerPort()));
-        final String fwId = "test-" + UUID.randomUUID();
-        final MesosClient<String, String> client = createClient(uri, fwId);
+        final MesosClient<String, String> client = createClient(uri);
 
         try {
             client.openStream().await();
+            fail("Expect an exception to be propagated up because subscribe will 400");
         } catch (Mesos4xxException e) {
             // expected
             final MesosClientErrorContext ctx = e.getContext();
             assertThat(ctx.getStatusCode()).isEqualTo(400);
+            assertThat(ctx.getMessage()).isEqualTo(errorMessage);
+        } finally {
+            server.shutdown();
+        }
+    }
+
+    @Test
+    public void testStreamDoesNotRunWhenSubscribeFails_nonTextResponseBodyNotRead() throws Throwable {
+        final RequestHandler<ByteBuf, ByteBuf> handler = (request, response) -> {
+            response.setStatus(HttpResponseStatus.BAD_REQUEST);
+            response.getHeaders().setHeader("Content-Length", 1);
+            response.getHeaders().setHeader("Content-Type", "application/octet-stream");
+            response.writeBytes(new byte[]{0b1});
+            return response.close();
+        };
+        final HttpServer<ByteBuf, ByteBuf> server = RxNetty.createHttpServer(0, handler);
+        server.start();
+        final URI uri = URI.create(String.format("http://localhost:%d/api/v1/scheduler", server.getServerPort()));
+        final MesosClient<String, String> client = createClient(uri);
+
+        try {
+            client.openStream().await();
+            fail("Expect an exception to be propagated up because subscribe will 400");
+        } catch (Mesos4xxException e) {
+            // expected
+            final MesosClientErrorContext ctx = e.getContext();
+            assertThat(ctx.getStatusCode()).isEqualTo(400);
+            assertThat(ctx.getMessage()).isEqualTo("Not attempting to decode error response of type 'application/octet-stream' as string");
         } finally {
             server.shutdown();
         }
@@ -73,11 +106,11 @@ public final class MesosClientIntegrationTest {
         final HttpServer<ByteBuf, ByteBuf> server = RxNetty.createHttpServer(0, handler);
         server.start();
         final URI uri = URI.create(String.format("http://localhost:%d/api/v1/scheduler", server.getServerPort()));
-        final String fwId = "test-" + UUID.randomUUID();
-        final MesosClient<String, String> client = createClient(uri, fwId);
+        final MesosClient<String, String> client = createClient(uri);
 
         try {
             client.openStream().await();
+            fail("Expect an exception to be propagated up because subscribe will 500");
         } catch (Mesos5xxException e) {
             // expected
             final MesosClientErrorContext ctx = e.getContext();
@@ -87,8 +120,33 @@ public final class MesosClientIntegrationTest {
         }
     }
 
+    @Test
+    public void testStreamDoesNotRunWhenSubscribeFails_mismatchContentType() throws Throwable {
+        final RequestHandler<ByteBuf, ByteBuf> handler = (request, response) -> {
+            response.setStatus(HttpResponseStatus.OK);
+            response.getHeaders().setHeader("Content-Type", "application/json");
+            return response.close();
+        };
+        final HttpServer<ByteBuf, ByteBuf> server = RxNetty.createHttpServer(0, handler);
+        server.start();
+        final URI uri = URI.create(String.format("http://localhost:%d/api/v1/scheduler", server.getServerPort()));
+        final MesosClient<String, String> client = createClient(uri);
+
+        try {
+            client.openStream().await();
+            fail("Expect an exception to be propagated up because of content type mismatch");
+        } catch (MesosException e) {
+            // expected
+            final MesosClientErrorContext ctx = e.getContext();
+            assertThat(ctx.getStatusCode()).isEqualTo(200);
+            assertThat(ctx.getMessage()).isEqualTo("Response had Content-Type \"application/json\" expected \"text/plain;charset=utf-8\"");
+        } finally {
+            server.shutdown();
+        }
+    }
+
     @NotNull
-    private static MesosClient<String, String> createClient(final URI uri, final String fwId) {
+    private static MesosClient<String, String> createClient(final URI uri) {
         return MesosClientBuilder.<String, String>newBuilder()
             .sendCodec(StringMessageCodec.UTF8_STRING)
             .receiveCodec(StringMessageCodec.UTF8_STRING)
