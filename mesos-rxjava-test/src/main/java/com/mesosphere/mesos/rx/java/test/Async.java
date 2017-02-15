@@ -19,12 +19,15 @@ package com.mesosphere.mesos.rx.java.test;
 import io.netty.util.concurrent.DefaultThreadFactory;
 import org.jetbrains.annotations.NotNull;
 import org.junit.rules.Verifier;
+import org.junit.runners.model.MultipleFailureException;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
 /**
  * A JUnit {@link org.junit.rules.TestRule Rule} that provides a convenience method to run async tasks.
@@ -86,19 +89,32 @@ public final class Async extends Verifier {
 
     @Override
     protected void verify() throws Throwable {
-        for (Task task : tasks) {
-            try {
-                task.future.get(10, TimeUnit.MILLISECONDS);
-            } catch (ExecutionException e) {
-                final Throwable cause = e.getCause();
-                if (cause != null && cause instanceof AssertionError) {
-                    throw cause;
+        final List<Throwable> errors = tasks.stream()
+            .map(task -> {
+                try {
+                    task.future.get(10, TimeUnit.MILLISECONDS);
+                    return Optional.<Throwable>empty();
+                } catch (ExecutionException e) {
+                    final Throwable cause = e.getCause();
+                    if (cause != null && cause instanceof AssertionError) {
+                        return Optional.of(cause);
+                    }
+                    final String baseMessage = "Error while running Async";
+                    final String message = Optional.ofNullable(cause)
+                        .map(c -> baseMessage + ": " + c.getMessage())
+                        .orElse(baseMessage);
+                    return Optional.of(new AssertionError(message, cause));
+                } catch (TimeoutException te) {
+                    return Optional.of(new AssertionError(String.format("Task [%s] still running after test completion", task.name)));
+                } catch (InterruptedException e) {
+                    return Optional.of(new AssertionError(e));
                 }
-                throw new AssertionError("Error while running Async", cause);
-            } catch (TimeoutException te) {
-                throw new AssertionError(String.format("Task [%s] still running after test completion", task.name));
-            }
-        }
+            })
+            .filter(Optional::isPresent)
+            .map(Optional::get)
+            .collect(Collectors.toList());
+        executor.shutdown();
+        MultipleFailureException.assertEmpty(errors);
     }
 
     /**
