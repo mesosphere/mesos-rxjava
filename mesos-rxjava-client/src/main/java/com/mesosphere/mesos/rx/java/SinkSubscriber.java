@@ -22,19 +22,15 @@ import io.reactivex.netty.protocol.http.client.HttpClient;
 import io.reactivex.netty.protocol.http.client.HttpClientRequest;
 import io.reactivex.netty.protocol.http.client.HttpResponseHeaders;
 import org.jetbrains.annotations.NotNull;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import rx.Observable;
 import rx.Subscriber;
 import rx.exceptions.Exceptions;
 import rx.functions.Func1;
 
-import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 
 final class SinkSubscriber<Send> extends Subscriber<SinkOperation<Send>> {
-    private static final Logger LOGGER = LoggerFactory.getLogger(SinkSubscriber.class);
 
     @NotNull
     private final HttpClient<ByteBuf, ByteBuf> httpClient;
@@ -62,28 +58,26 @@ final class SinkSubscriber<Send> extends Subscriber<SinkOperation<Send>> {
 
                     if (code == 202) {
                         /* This is success */
-                        op.onCompleted();  // TODO: Try and make sure this is actually executed on the compute thread
+                        op.onCompleted();
                     } else {
-                        resp.getContent()
-                            .map(buf -> {
-                                final String errorMessage = buf.toString(StandardCharsets.UTF_8);
-                                final HttpResponseHeaders headers = resp.getHeaders();
-                                final List<Map.Entry<String, String>> entries = headers.entries();
-                                return new MesosClientErrorContext(code, errorMessage, entries);
-                            })
-                            // TODO: Schedule on computation()
+                        final HttpResponseHeaders headers = resp.getHeaders();
+                        ResponseUtils.attemptToReadErrorResponse(resp)
                             .observeOn(Rx.compute())
-                            .forEach(context -> {
+                            .forEach(msg -> {
+                                final List<Map.Entry<String, String>> entries = headers.entries();
+                                final MesosClientErrorContext context = new MesosClientErrorContext(code, msg, entries);
+                                MesosException error;
                                 if (400 <= code && code < 500) {
                                     // client error
-                                    op.onError(new Mesos4xxException(toSink, context));
+                                    error = new Mesos4xxException(toSink, context);
                                 } else if (500 <= code && code < 600) {
                                     // client error
-                                    op.onError(new Mesos5xxException(toSink, context));
+                                    error = new Mesos5xxException(toSink, context);
                                 } else {
-                                    // Unknown error
-                                    LOGGER.warn("Unhandled error: context = {}", context);
+                                    // something else that isn't success but not an error as far as http is concerned
+                                    error = new MesosException(toSink, context);
                                 }
+                                op.onError(error);
                             });
                     }
                 });
