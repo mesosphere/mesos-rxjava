@@ -55,7 +55,7 @@ final class SinkSubscriber<Send> extends Subscriber<SinkOperation<Send>> {
             final Send toSink = op.getThingToSink();
             createPost.call(toSink)
                 .flatMap(httpClient::submit)
-                .subscribeOn(Rx.compute())
+                .observeOn(Rx.compute())
                 .subscribe(resp -> {
                     final HttpResponseStatus status = resp.getStatus();
                     final int code = status.code();
