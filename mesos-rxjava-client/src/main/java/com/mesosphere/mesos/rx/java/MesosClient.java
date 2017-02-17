@@ -36,7 +36,6 @@ import rx.functions.Func1;
 
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.List;
 import java.util.Map;
@@ -239,21 +238,7 @@ public final class MesosClient<Send, Receive> {
                 return resp.getContent();
             } else {
                 final HttpResponseHeaders headers = resp.getHeaders();
-                Observable<String> errMsgObservable;
-                if (headers.isContentLengthSet() && headers.getContentLength() > 0 ) {
-                    if (contentType != null && contentType.startsWith("text/plain")) {
-                        errMsgObservable = resp.getContent()
-                            .map(r -> r.toString(StandardCharsets.UTF_8));
-                    } else {
-                        final String errMsg = String.format("Not attempting to decode error response of type '%s' as string", contentType);
-                        errMsgObservable = Observable.just(errMsg);
-                        resp.ignoreContent();
-                    }
-                } else {
-                    errMsgObservable = Observable.just("");
-                }
-
-                return errMsgObservable.flatMap(msg -> {
+                return ResponseUtils.attemptToReadErrorResponse(resp).flatMap(msg -> {
                     final List<Map.Entry<String, String>> entries = headers.entries();
                     final MesosClientErrorContext context = new MesosClientErrorContext(code, msg, entries);
                     if (code == 200) {
