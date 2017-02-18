@@ -16,6 +16,7 @@
 
 package com.mesosphere.mesos.rx.java.test;
 
+import io.netty.util.concurrent.DefaultThreadFactory;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
@@ -34,7 +35,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
@@ -45,15 +45,13 @@ public final class TcpSocketProxy implements Closeable {
     private static final Logger LOGGER = LoggerFactory.getLogger(TcpSocketProxy.class);
 
     @NotNull
-    private final AtomicInteger threadCounter = new AtomicInteger(1);
-    @NotNull
     private final ExecutorService service = Executors.newCachedThreadPool(
-        r -> new Thread(r, "TcpSocketProxy-" + threadCounter.getAndIncrement())
+        new DefaultThreadFactory("TcpSocketProxy", true)
     );
 
     @NotNull
     private final ScheduledExecutorService murderService = Executors.newSingleThreadScheduledExecutor(
-        r -> new Thread(r, "TcpSocketProxy-murderer")
+        new DefaultThreadFactory("TcpSocketProxy-murderer", true)
     );
 
     @NotNull

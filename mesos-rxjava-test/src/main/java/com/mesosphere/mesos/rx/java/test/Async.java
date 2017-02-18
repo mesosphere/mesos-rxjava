@@ -66,7 +66,7 @@ public final class Async extends Verifier {
 
     public Async() {
         counter = new AtomicInteger(0);
-        executor = Executors.newCachedThreadPool(new DefaultThreadFactory(Async.class));
+        executor = Executors.newCachedThreadPool(new DefaultThreadFactory(Async.class, true));
         tasks = Collections.synchronizedList(new ArrayList<>());
     }
 
