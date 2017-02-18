@@ -23,6 +23,7 @@ import com.mesosphere.mesos.rx.java.util.UserAgentEntry;
 import io.netty.buffer.ByteBuf;
 import io.netty.handler.codec.http.HttpHeaderNames;
 import io.netty.handler.codec.http.HttpResponseStatus;
+import io.netty.util.concurrent.DefaultThreadFactory;
 import io.reactivex.netty.RxNetty;
 import io.reactivex.netty.protocol.http.client.*;
 import org.jetbrains.annotations.NotNull;
@@ -62,7 +63,9 @@ public final class MesosClient<Send, Receive> {
     private static final String MESOS_STREAM_ID = "Mesos-Stream-Id";
 
     @NotNull
-    private final ExecutorService exec = Executors.newSingleThreadExecutor(r -> new Thread(r, "stream-monitor-thread"));
+    private final ExecutorService exec = Executors.newSingleThreadExecutor(
+        new DefaultThreadFactory("stream-monitor-thread", true)
+    );
 
     @NotNull
     private final URI mesosUri;
