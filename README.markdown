@@ -38,7 +38,7 @@ Releases are available in Maven Central.
 <dependency>
     <groupId>com.mesosphere.mesos.rx.java</groupId>
     <artifactId>mesos-rxjava-protobuf-client</artifactId>
-    <version>0.1.0</version>
+    <version>0.1.1</version>
 </dependency>
 ```
 
@@ -48,7 +48,7 @@ Releases are available in Maven Central.
 <dependency>
     <groupId>com.mesosphere.mesos.rx.java</groupId>
     <artifactId>mesos-rxjava-test</artifactId>
-    <version>0.1.0</version>
+    <version>0.1.1</version>
     <scope>test</scope>
 </dependency>
 ```
