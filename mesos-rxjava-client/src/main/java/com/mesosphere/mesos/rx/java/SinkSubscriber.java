@@ -29,6 +29,7 @@ import rx.functions.Func1;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 final class SinkSubscriber<Send> extends Subscriber<SinkOperation<Send>> {
 
@@ -51,19 +52,17 @@ final class SinkSubscriber<Send> extends Subscriber<SinkOperation<Send>> {
             final Send toSink = op.getThingToSink();
             createPost.call(toSink)
                 .flatMap(httpClient::submit)
-                .observeOn(Rx.compute())
-                .subscribe(resp -> {
+                .flatMap(resp -> {
                     final HttpResponseStatus status = resp.getStatus();
                     final int code = status.code();
 
                     if (code == 202) {
                         /* This is success */
-                        op.onCompleted();
+                        return Observable.just(Optional.<MesosException>empty());
                     } else {
                         final HttpResponseHeaders headers = resp.getHeaders();
-                        ResponseUtils.attemptToReadErrorResponse(resp)
-                            .observeOn(Rx.compute())
-                            .forEach(msg -> {
+                        return ResponseUtils.attemptToReadErrorResponse(resp)
+                            .map(msg -> {
                                 final List<Map.Entry<String, String>> entries = headers.entries();
                                 final MesosClientErrorContext context = new MesosClientErrorContext(code, msg, entries);
                                 MesosException error;
@@ -77,8 +76,16 @@ final class SinkSubscriber<Send> extends Subscriber<SinkOperation<Send>> {
                                     // something else that isn't success but not an error as far as http is concerned
                                     error = new MesosException(toSink, context);
                                 }
-                                op.onError(error);
+                                return Optional.of(error);
                             });
+                    }
+                })
+                .observeOn(Rx.compute())
+                .subscribe(exception -> {
+                    if (!exception.isPresent()) {
+                        op.onCompleted();
+                    } else {
+                        op.onError(exception.get());
                     }
                 });
         } catch (Throwable e) {
