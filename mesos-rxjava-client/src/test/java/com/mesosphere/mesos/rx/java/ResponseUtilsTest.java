@@ -114,24 +114,6 @@ public class ResponseUtilsTest {
         }
     }
 
-    @Test
-    public void attemptToReadErrorResponse_responseContentNotIgnoredWhenFalse() throws Exception {
-        final String errMsg = "lies";
-        final byte[] bytes = errMsg.getBytes(StandardCharsets.UTF_8);
-        final HttpClientResponse<ByteBuf> resp = response(Unpooled.copiedBuffer(bytes), (headers) -> {
-            headers.add("Content-Type", "application/json;charset=utf-8");
-            headers.add("Content-Length", bytes.length);
-        });
-
-        final String err = ResponseUtils.attemptToReadErrorResponse(resp, false).toBlocking().first();
-        assertThat(err).isNotEqualTo("lies");
-
-        final String first = resp.getContent()
-            .map(buf -> buf.toString(StandardCharsets.UTF_8))
-            .toBlocking().first();
-        assertThat(first).isEqualTo("lies");
-    }
-
     private static HttpClientResponse<ByteBuf> response(
         @NotNull final ByteBuf content,
         @NotNull final Action1<HttpHeaders> headerTransformer
