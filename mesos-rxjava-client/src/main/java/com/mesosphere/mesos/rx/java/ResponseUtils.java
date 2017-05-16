@@ -29,13 +29,21 @@ final class ResponseUtils {
 
     private ResponseUtils() {}
 
+    /**
+     * Attempts to read the content of an error response as {@code text/plain;charset=utf-8}, otherwise the content
+     * will be ignored and a string detailing the Content-Type that was not processed.
+     * <p>
+     * <b>NOTE:</b>
+     * <i>
+     *     This method MUST be called from the netty-io thread otherwise the content of the response will not be
+     *     available because if will be released automatically as soon as the netty-io thread is left.
+     * </i>
+     * @param resp  The response to attempt to read from
+     * @return An {@link Observable} representing the {@code text/plain;charset=utf-8} response content if it existed
+     *         or an error message indicating the content-type that was not attempted to read.
+     */
     @NotNull
     static Observable<String> attemptToReadErrorResponse(@NotNull final HttpClientResponse<ByteBuf> resp) {
-        return attemptToReadErrorResponse(resp, true);
-    }
-
-    @NotNull
-    static Observable<String> attemptToReadErrorResponse(@NotNull final HttpClientResponse<ByteBuf> resp, final boolean ignoreContentWhenUnreadable) {
         final HttpResponseHeaders headers = resp.getHeaders();
         final String contentType = resp.getHeaders().get(HttpHeaderNames.CONTENT_TYPE);
         if (headers.isContentLengthSet() && headers.getContentLength() > 0 ) {
@@ -43,9 +51,7 @@ final class ResponseUtils {
                 return resp.getContent()
                     .map(r -> r.toString(StandardCharsets.UTF_8));
             } else {
-                if (ignoreContentWhenUnreadable) {
-                    resp.ignoreContent();
-                }
+                resp.ignoreContent();
                 final String errMsg = getErrMsg(contentType);
                 return Observable.just(errMsg);
             }
