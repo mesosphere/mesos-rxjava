@@ -278,6 +278,20 @@ public final class MesosServerSimulation<Event, Call> {
     }
 
     /**
+     * Block the invoking thread until {@code callCount} {@link Call}s are received by the server or
+     * until a specified amount of time elapses.
+     * <p>
+     *
+     * @param callCount The number of events to block and wait for
+     * @param timeout The amount of time to wait for the events before timing out
+     * @param unit The {@link TimeUnit} for the timeout
+     * @throws InterruptedException if the current thread is interrupted while waiting
+     */
+    public void awaitCall(final int callCount, final long timeout, final TimeUnit unit) throws InterruptedException {
+        sem.tryAcquire(callCount, timeout, unit);
+    }
+
+    /**
      * Block the invoking thread until a "Subscribe call" is received by the server as determined by the
      * {@code isSubscribePredicate} provided to the constructor.
      * <p>

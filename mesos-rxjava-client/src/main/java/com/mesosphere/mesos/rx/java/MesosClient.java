@@ -85,18 +85,23 @@ public final class MesosClient<Send, Receive> {
     @NotNull
     private final AtomicReference<String> mesosStreamId = new AtomicReference<>(null);
 
+    @NotNull
+    private final Observable.Transformer<byte[], byte[]> backpressureTransformer;
+
     MesosClient(
         @NotNull final URI mesosUri,
         @NotNull final Function<Class<?>, UserAgentEntry> applicationUserAgentEntry,
         @NotNull final MessageCodec<Send> sendCodec,
         @NotNull final MessageCodec<Receive> receiveCodec,
         @NotNull final Send subscribe,
-        @NotNull final Function<Observable<Receive>, Observable<Optional<SinkOperation<Send>>>> streamProcessor
+        @NotNull final Function<Observable<Receive>, Observable<Optional<SinkOperation<Send>>>> streamProcessor,
+        @NotNull final  Observable.Transformer<byte[], byte[]> backpressureTransformer
     ) {
         this.mesosUri = mesosUri;
         this.receiveCodec = receiveCodec;
         this.subscribe = subscribe;
         this.streamProcessor = streamProcessor;
+        this.backpressureTransformer = backpressureTransformer;
 
         userAgent = new UserAgent(
             applicationUserAgentEntry,
@@ -132,6 +137,7 @@ public final class MesosClient<Send, Receive> {
             .subscribeOn(Rx.io())
             .flatMap(verifyResponseOk(subscribe, mesosStreamId, receiveCodec.mediaType()))
             .lift(new RecordIOOperator())
+            .compose(backpressureTransformer)
             .observeOn(Rx.compute())
             /* Begin temporary back-pressure */
             .buffer(250, TimeUnit.MILLISECONDS)

@@ -19,7 +19,10 @@ package com.mesosphere.mesos.rx.java;
 import com.mesosphere.mesos.rx.java.util.MessageCodec;
 import com.mesosphere.mesos.rx.java.util.UserAgentEntry;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+import rx.BackpressureOverflow;
 import rx.Observable;
+import rx.functions.Action0;
 
 import java.net.URI;
 import java.util.Optional;
@@ -42,8 +45,11 @@ public final class MesosClientBuilder<Send, Receive> {
     private MessageCodec<Receive> receiveCodec;
     private Send subscribe;
     private Function<Observable<Receive>, Observable<Optional<SinkOperation<Send>>>> streamProcessor;
+    private Observable.Transformer<byte[], byte[]> backpressureTransformer;
 
-    private MesosClientBuilder() {}
+    private MesosClientBuilder() {
+        backpressureTransformer = observable -> observable;
+    }
 
     /**
      * Create a new instance of MesosClientBuilder
@@ -163,6 +169,83 @@ public final class MesosClientBuilder<Send, Receive> {
     }
 
     /**
+     * Instructs the HTTP byte[] stream to be composed with reactive pull backpressure such that
+     * a burst of incoming Mesos messages is handled by an unbounded buffer rather than a
+     * MissingBackpressureException.
+     *
+     * As an example, this may be necessary for Mesos schedulers that launch large numbers
+     * of tasks at a time and then request reconciliation.
+     *
+     * @return this builder (allowing for further chained calls)
+     * @see <a href="http://reactivex.io/documentation/operators/backpressure.html">ReactiveX operators documentation: backpressure operators</a>
+     */
+    @NotNull
+    public MesosClientBuilder<Send, Receive> onBackpressureBuffer(
+    ) {
+        this.backpressureTransformer = observable -> observable.onBackpressureBuffer();
+        return this;
+    }
+
+
+    /**
+     * Instructs the HTTP byte[] stream to be composed with reactive pull backpressure such that
+     * a burst of incoming Mesos messages is handled by a bounded buffer rather than a
+     * MissingBackpressureException. If the buffer is overflown, a {@link java.nio.BufferOverflowException}
+     * is thrown.
+     *
+     * As an example, this may be necessary for Mesos schedulers that launch large numbers
+     * of tasks at a time and then request reconciliation.
+     *
+     * @param capacity number of slots available in the buffer.
+     * @return this builder (allowing for further chained calls)
+     * @see <a href="http://reactivex.io/documentation/operators/backpressure.html">ReactiveX operators documentation: backpressure operators</a>
+     */
+    @NotNull
+    public MesosClientBuilder<Send, Receive> onBackpressureBuffer(
+        final long capacity
+    ) {
+        this.backpressureTransformer = observable -> observable.onBackpressureBuffer(capacity);
+        return this;
+    }
+
+    /**
+     * Instructs the HTTP byte[] stream to be composed with reactive pull backpressure such that
+     * a burst of incoming Mesos messages is handled by a bounded buffer rather than a
+     * MissingBackpressureException. If the buffer is overflown, your own custom onOverflow callback
+     * will be invoked, and the overflow will mitigate the issue based on the {@link BackpressureOverflow.Strategy}
+     * that you select.
+     *
+     * <ul>
+     *     <li>{@link BackpressureOverflow#ON_OVERFLOW_ERROR} (default) will {@code onError} dropping all undelivered items,
+     *     unsubscribing from the source, and notifying the producer with {@code onOverflow}. </li>
+     *     <li>{@link BackpressureOverflow#ON_OVERFLOW_DROP_LATEST} will drop any new items emitted by the producer while
+     *     the buffer is full, without generating any {@code onError}.  Each drop will however invoke {@code onOverflow}
+     *     to signal the overflow to the producer.</li>
+     *     <li>{@link BackpressureOverflow#ON_OVERFLOW_DROP_OLDEST} will drop the oldest items in the buffer in order to make
+     *     room for newly emitted ones. Overflow will not generate an{@code onError}, but each drop will invoke
+     *     {@code onOverflow} to signal the overflow to the producer.</li>
+     * </ul>
+     *
+     * As an example, this may be necessary for Mesos schedulers that launch large numbers
+     * of tasks at a time and then request reconciliation.
+     *
+     * @param capacity number of slots available in the buffer.
+     * @param onOverflow action to execute if an item needs to be buffered, but there are no available slots.  Null is allowed.
+     * @param strategy how should the {@code Observable} react to buffer overflows.
+     * @return this builder (allowing for further chained calls)
+     * @see <a href="http://reactivex.io/documentation/operators/backpressure.html">ReactiveX operators documentation: backpressure operators</a>
+     */
+    @NotNull
+    public MesosClientBuilder<Send, Receive> onBackpressureBuffer(
+            final long capacity,
+            @Nullable final Action0 onOverflow,
+            @NotNull final BackpressureOverflow.Strategy strategy
+            ) {
+        this.backpressureTransformer = observable -> observable.onBackpressureBuffer(capacity, onOverflow, strategy);
+        return this;
+    }
+
+    /**
      * Builds the instance of {@link MesosClient} that has been configured by this builder.
      * All items are expected to have non-null values, if any item is null an exception will be thrown.
      * @return The configured {@link MesosClient}
@@ -175,7 +258,8 @@ public final class MesosClientBuilder<Send, Receive> {
             checkNotNull(sendCodec),
             checkNotNull(receiveCodec),
             checkNotNull(subscribe),
-            checkNotNull(streamProcessor)
+            checkNotNull(streamProcessor),
+            checkNotNull(backpressureTransformer)
         );
     }
 
