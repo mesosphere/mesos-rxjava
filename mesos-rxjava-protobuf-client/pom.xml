@@ -22,7 +22,7 @@
     <parent>
         <groupId>com.mesosphere.mesos.rx.java</groupId>
         <artifactId>mesos-rxjava</artifactId>
-        <version>0.2.0-SNAPSHOT</version>
+        <version>0.2.0</version>
     </parent>
 
     <artifactId>mesos-rxjava-protobuf-client</artifactId>
