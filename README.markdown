@@ -38,7 +38,7 @@ Releases are available in Maven Central.
 <dependency>
     <groupId>com.mesosphere.mesos.rx.java</groupId>
     <artifactId>mesos-rxjava-protobuf-client</artifactId>
-    <version>0.1.2</version>
+    <version>0.2.0</version>
 </dependency>
 ```
 
@@ -48,7 +48,7 @@ Releases are available in Maven Central.
 <dependency>
     <groupId>com.mesosphere.mesos.rx.java</groupId>
     <artifactId>mesos-rxjava-test</artifactId>
-    <version>0.1.2</version>
+    <version>0.2.0</version>
     <scope>test</scope>
 </dependency>
 ```
@@ -77,7 +77,7 @@ Version `0.1.0-SNAPSHOT` has been published to the Sonatype OSS Snapshot Repo.
 <dependency>
     <groupId>com.mesosphere.mesos.rx.java</groupId>
     <artifactId>mesos-rxjava-protobuf-client</artifactId>
-    <version>0.2.0</version>
+    <version>0.2.1-SNAPSHOT</version>
 </dependency>
 ```
 
@@ -87,7 +87,7 @@ Version `0.1.0-SNAPSHOT` has been published to the Sonatype OSS Snapshot Repo.
 <dependency>
     <groupId>com.mesosphere.mesos.rx.java</groupId>
     <artifactId>mesos-rxjava-test</artifactId>
-    <version>0.2.0</version>
+    <version>0.2.1-SNAPSHOT</version>
     <scope>test</scope>
 </dependency>
 ```
