@@ -1,0 +1,7 @@
+com.mesosphere.mesos.rx.java
+com.mesosphere.mesos.rx.java.example.framework.sleepy
+com.mesosphere.mesos.rx.java.protobuf
+com.mesosphere.mesos.rx.java.recordio
+com.mesosphere.mesos.rx.java.test
+com.mesosphere.mesos.rx.java.test.simulation
+com.mesosphere.mesos.rx.java.util
