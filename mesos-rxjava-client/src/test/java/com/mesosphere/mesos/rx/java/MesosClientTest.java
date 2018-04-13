@@ -284,7 +284,7 @@ public final class MesosClientTest {
 
     @Test
     public void testGetUriFromRedirectResponse() throws Exception {
-        final URI mesosUri = URI.create("http://127.1.0.1:5050/api/v1/scheduler");
+        final URI mesosUri = URI.create("http://username:password@127.1.0.1:5050/api/v1/scheduler");
         final DefaultHttpResponse nettyResponse = new DefaultHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.TEMPORARY_REDIRECT);
         nettyResponse.headers().add("Location", "//127.1.0.2:5050");
         final HttpClientResponse<ByteBuf> response = new HttpClientResponse<>(
@@ -292,7 +292,7 @@ public final class MesosClientTest {
             UnicastContentSubject.create(1000, TimeUnit.MILLISECONDS)
         );
         final URI uri = MesosClient.getUriFromRedirectResponse(mesosUri, response);
-        assertThat(uri).isEqualTo(URI.create("http://127.1.0.2:5050/api/v1/scheduler"));
+        assertThat(uri).isEqualTo(URI.create("http://username:password@127.1.0.2:5050/api/v1/scheduler"));
     }
 
     @Test
