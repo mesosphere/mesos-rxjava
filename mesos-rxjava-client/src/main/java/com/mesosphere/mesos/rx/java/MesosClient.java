@@ -209,7 +209,7 @@ public final class MesosClient<Send, Receive> {
         try {
             return new URI(
                 relativeUri.getScheme(),
-                relativeUri.getUserInfo(),
+                mesosUri.getUserInfo(),
                 relativeUri.getHost(),
                 relativeUri.getPort(),
                 mesosUri.getPath(),
