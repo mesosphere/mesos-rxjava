@@ -16,9 +16,25 @@
 
 package com.mesosphere.mesos.rx.java;
 
+import static com.mesosphere.mesos.rx.java.util.UserAgentEntries.literal;
+import static org.assertj.core.api.Assertions.assertThat;
+
+import java.net.URI;
+import java.util.Base64;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Optional;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
+
+import org.jetbrains.annotations.NotNull;
+import org.junit.Test;
+
 import com.google.common.collect.Maps;
 import com.mesosphere.mesos.rx.java.test.StringMessageCodec;
 import com.mesosphere.mesos.rx.java.util.UserAgent;
+
 import io.netty.buffer.ByteBuf;
 import io.netty.handler.codec.http.DefaultHttpResponse;
 import io.netty.handler.codec.http.HttpHeaderNames;
@@ -28,18 +44,8 @@ import io.reactivex.netty.protocol.http.UnicastContentSubject;
 import io.reactivex.netty.protocol.http.client.HttpClientRequest;
 import io.reactivex.netty.protocol.http.client.HttpClientResponse;
 import io.reactivex.netty.protocol.http.client.HttpRequestHeaders;
-import org.jetbrains.annotations.NotNull;
-import org.junit.Test;
 import rx.Observable;
 import rx.functions.Func1;
-
-import java.net.URI;
-import java.util.*;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicReference;
-
-import static com.mesosphere.mesos.rx.java.util.UserAgentEntries.literal;
-import static org.assertj.core.api.Assertions.assertThat;
 
 public final class MesosClientTest {
 
@@ -284,7 +290,7 @@ public final class MesosClientTest {
 
     @Test
     public void testGetUriFromRedirectResponse() throws Exception {
-        final URI mesosUri = URI.create("http://127.1.0.1:5050/api/v1/scheduler");
+        final URI mesosUri = URI.create("http://username:password@127.1.0.1:5050/api/v1/scheduler");
         final DefaultHttpResponse nettyResponse = new DefaultHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.TEMPORARY_REDIRECT);
         nettyResponse.headers().add("Location", "//127.1.0.2:5050");
         final HttpClientResponse<ByteBuf> response = new HttpClientResponse<>(
@@ -292,7 +298,7 @@ public final class MesosClientTest {
             UnicastContentSubject.create(1000, TimeUnit.MILLISECONDS)
         );
         final URI uri = MesosClient.getUriFromRedirectResponse(mesosUri, response);
-        assertThat(uri).isEqualTo(URI.create("http://127.1.0.2:5050/api/v1/scheduler"));
+        assertThat(uri).isEqualTo(URI.create("http://1username:password@27.1.0.2:5050/api/v1/scheduler"));
     }
 
     @Test

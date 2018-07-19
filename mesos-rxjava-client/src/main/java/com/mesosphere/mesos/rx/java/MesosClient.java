@@ -16,24 +16,9 @@
 
 package com.mesosphere.mesos.rx.java;
 
-import com.mesosphere.mesos.rx.java.recordio.RecordIOOperator;
-import com.mesosphere.mesos.rx.java.util.MessageCodec;
-import com.mesosphere.mesos.rx.java.util.UserAgent;
-import com.mesosphere.mesos.rx.java.util.UserAgentEntry;
-import io.netty.buffer.ByteBuf;
-import io.netty.handler.codec.http.HttpHeaderNames;
-import io.netty.handler.codec.http.HttpResponseStatus;
-import io.netty.util.concurrent.DefaultThreadFactory;
-import io.reactivex.netty.RxNetty;
-import io.reactivex.netty.protocol.http.client.*;
-import org.jetbrains.annotations.NotNull;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import rx.Observable;
-import rx.Subscriber;
-import rx.Subscription;
-import rx.exceptions.Exceptions;
-import rx.functions.Func1;
+import static com.mesosphere.mesos.rx.java.util.UserAgentEntries.userAgentEntryForGradleArtifact;
+import static com.mesosphere.mesos.rx.java.util.UserAgentEntries.userAgentEntryForMavenArtifact;
+import static rx.Observable.just;
 
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -41,13 +26,39 @@ import java.util.Base64;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.*;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.LinkedBlockingDeque;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 
-import static com.mesosphere.mesos.rx.java.util.UserAgentEntries.userAgentEntryForGradleArtifact;
-import static com.mesosphere.mesos.rx.java.util.UserAgentEntries.userAgentEntryForMavenArtifact;
-import static rx.Observable.just;
+import org.jetbrains.annotations.NotNull;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.mesosphere.mesos.rx.java.recordio.RecordIOOperator;
+import com.mesosphere.mesos.rx.java.util.MessageCodec;
+import com.mesosphere.mesos.rx.java.util.UserAgent;
+import com.mesosphere.mesos.rx.java.util.UserAgentEntry;
+
+import io.netty.buffer.ByteBuf;
+import io.netty.handler.codec.http.HttpHeaderNames;
+import io.netty.handler.codec.http.HttpResponseStatus;
+import io.netty.util.concurrent.DefaultThreadFactory;
+import io.reactivex.netty.RxNetty;
+import io.reactivex.netty.protocol.http.client.HttpClient;
+import io.reactivex.netty.protocol.http.client.HttpClientPipelineConfigurator;
+import io.reactivex.netty.protocol.http.client.HttpClientRequest;
+import io.reactivex.netty.protocol.http.client.HttpClientResponse;
+import io.reactivex.netty.protocol.http.client.HttpResponseHeaders;
+import rx.Observable;
+import rx.Subscriber;
+import rx.Subscription;
+import rx.exceptions.Exceptions;
+import rx.functions.Func1;
 
 /**
  * This class performs the necessary work to create an {@link Observable} of {@code Receive} from Mesos'
@@ -209,7 +220,7 @@ public final class MesosClient<Send, Receive> {
         try {
             return new URI(
                 relativeUri.getScheme(),
-                relativeUri.getUserInfo(),
+                mesosUri.getUserInfo(),
                 relativeUri.getHost(),
                 relativeUri.getPort(),
                 mesosUri.getPath(),
