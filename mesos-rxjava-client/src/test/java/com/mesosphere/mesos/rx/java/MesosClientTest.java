@@ -76,8 +76,8 @@ public final class MesosClientTest {
             new UserAgent(
                 literal("testing", "latest")
             ),
-            new AtomicReference<>(null)
-        );
+            new AtomicReference<>(null),
+                null);
 
         final HttpClientRequest<ByteBuf> request = createPost.call("something")
             .toBlocking()
@@ -95,8 +95,8 @@ public final class MesosClientTest {
             new UserAgent(
                 literal("testing", "latest")
             ),
-            new AtomicReference<>(null)
-        );
+            new AtomicReference<>(null),
+                null);
 
         final HttpClientRequest<ByteBuf> request = createPost.call("something")
             .toBlocking()
@@ -122,8 +122,8 @@ public final class MesosClientTest {
             new UserAgent(
                 literal("testing", "latest")
             ),
-            new AtomicReference<>("streamId")
-        );
+            new AtomicReference<>("streamId"),
+                null);
 
         final HttpClientRequest<ByteBuf> request = createPost.call("something")
             .toBlocking()
@@ -143,8 +143,8 @@ public final class MesosClientTest {
             new UserAgent(
                 literal("testing", "latest")
             ),
-            new AtomicReference<>(null)
-        );
+            new AtomicReference<>(null),
+                null);
 
         final HttpClientRequest<ByteBuf> request = createPost.call("something")
             .toBlocking()
