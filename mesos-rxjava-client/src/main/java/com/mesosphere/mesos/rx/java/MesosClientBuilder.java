@@ -25,8 +25,10 @@ import rx.Observable;
 import rx.functions.Action0;
 
 import java.net.URI;
+import java.util.Map;
 import java.util.Optional;
 import java.util.function.Function;
+import java.util.function.Supplier;
 
 import static com.mesosphere.mesos.rx.java.util.Validations.checkNotNull;
 
@@ -46,6 +48,7 @@ public final class MesosClientBuilder<Send, Receive> {
     private Send subscribe;
     private Function<Observable<Receive>, Observable<Optional<SinkOperation<Send>>>> streamProcessor;
     private Observable.Transformer<byte[], byte[]> backpressureTransformer;
+    private Supplier<Map<String, String>> headerSupplier;
 
     private MesosClientBuilder() {
         backpressureTransformer = observable -> observable;
@@ -208,6 +211,21 @@ public final class MesosClientBuilder<Send, Receive> {
         return this;
     }
 
+
+    /**
+     * Provides a supplier that will be called to supply arbitrary HTTP headers.
+     *
+     * @param headerSupplier supplier callback for arbitrary HTTP request headers
+     * @return this builder (allowing for further chained calls)
+     */
+    @NotNull
+    public MesosClientBuilder<Send, Receive> headerSupplier(
+            @NotNull final Supplier<Map<String, String>> headerSupplier
+            ) {
+        this.headerSupplier = headerSupplier;
+        return this;
+    }
+
     /**
      * Instructs the HTTP byte[] stream to be composed with reactive pull backpressure such that
      * a burst of incoming Mesos messages is handled by a bounded buffer rather than a
@@ -259,7 +277,8 @@ public final class MesosClientBuilder<Send, Receive> {
             checkNotNull(receiveCodec),
             checkNotNull(subscribe),
             checkNotNull(streamProcessor),
-            checkNotNull(backpressureTransformer)
+            checkNotNull(backpressureTransformer),
+            headerSupplier
         );
     }
 

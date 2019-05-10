@@ -25,8 +25,10 @@ import io.netty.handler.codec.http.HttpHeaderNames;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import io.netty.util.concurrent.DefaultThreadFactory;
 import io.reactivex.netty.RxNetty;
+import io.reactivex.netty.pipeline.ssl.DefaultFactories;
 import io.reactivex.netty.protocol.http.client.*;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import rx.Observable;
@@ -44,6 +46,7 @@ import java.util.Optional;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
+import java.util.function.Supplier;
 
 import static com.mesosphere.mesos.rx.java.util.UserAgentEntries.userAgentEntryForGradleArtifact;
 import static com.mesosphere.mesos.rx.java.util.UserAgentEntries.userAgentEntryForMavenArtifact;
@@ -88,6 +91,21 @@ public final class MesosClient<Send, Receive> {
     @NotNull
     private final Observable.Transformer<byte[], byte[]> backpressureTransformer;
 
+    @Nullable
+    private final Supplier<Map<String, String>> headerSupplier;
+
+    MesosClient(
+            @NotNull final URI mesosUri,
+            @NotNull final Function<Class<?>, UserAgentEntry> applicationUserAgentEntry,
+            @NotNull final MessageCodec<Send> sendCodec,
+            @NotNull final MessageCodec<Receive> receiveCodec,
+            @NotNull final Send subscribe,
+            @NotNull final Function<Observable<Receive>, Observable<Optional<SinkOperation<Send>>>> streamProcessor,
+            @NotNull final  Observable.Transformer<byte[], byte[]> backpressureTransformer
+    ) {
+        this(mesosUri, applicationUserAgentEntry, sendCodec, receiveCodec, subscribe, streamProcessor, backpressureTransformer, null);
+    }
+
     MesosClient(
         @NotNull final URI mesosUri,
         @NotNull final Function<Class<?>, UserAgentEntry> applicationUserAgentEntry,
@@ -95,13 +113,15 @@ public final class MesosClient<Send, Receive> {
         @NotNull final MessageCodec<Receive> receiveCodec,
         @NotNull final Send subscribe,
         @NotNull final Function<Observable<Receive>, Observable<Optional<SinkOperation<Send>>>> streamProcessor,
-        @NotNull final  Observable.Transformer<byte[], byte[]> backpressureTransformer
+        @NotNull final  Observable.Transformer<byte[], byte[]> backpressureTransformer,
+        @Nullable final Supplier<Map<String, String>> headerSupplier
     ) {
         this.mesosUri = mesosUri;
         this.receiveCodec = receiveCodec;
         this.subscribe = subscribe;
         this.streamProcessor = streamProcessor;
         this.backpressureTransformer = backpressureTransformer;
+        this.headerSupplier = headerSupplier;
 
         userAgent = new UserAgent(
             applicationUserAgentEntry,
@@ -109,7 +129,7 @@ public final class MesosClient<Send, Receive> {
             userAgentEntryForGradleArtifact("rxnetty")
         );
 
-        createPost = curryCreatePost(mesosUri, sendCodec, receiveCodec, userAgent, mesosStreamId);
+        createPost = curryCreatePost(mesosUri, sendCodec, receiveCodec, userAgent, mesosStreamId, headerSupplier);
     }
 
     /**
@@ -127,10 +147,15 @@ public final class MesosClient<Send, Receive> {
 
         final URI uri = resolveMesosUri(mesosUri);
 
-        final HttpClient<ByteBuf, ByteBuf> httpClient = RxNetty.<ByteBuf, ByteBuf>newHttpClientBuilder(uri.getHost(), getPort(uri))
-            .withName(userAgent.getEntries().get(0).getName())
-            .pipelineConfigurator(new HttpClientPipelineConfigurator<>())
-            .build();
+        HttpClientBuilder<ByteBuf, ByteBuf> builder = RxNetty.<ByteBuf, ByteBuf>newHttpClientBuilder(uri.getHost(), getPort(uri))
+                .withName(userAgent.getEntries().get(0).getName())
+                .pipelineConfigurator(new HttpClientPipelineConfigurator<>());
+
+        if (uri.getScheme().equalsIgnoreCase("https")) {
+            builder = builder.withSslEngineFactory(DefaultFactories.trustAll());
+        }
+
+        final HttpClient<ByteBuf, ByteBuf> httpClient = builder.build();
 
         final Observable<Receive> receives = createPost.call(subscribe)
             .flatMap(httpClient::submit)
@@ -395,21 +420,29 @@ public final class MesosClient<Send, Receive> {
         }
     }
 
-    @NotNull
     // @VisibleForTesting
     static <Send, Receive> Func1<Send, Observable<HttpClientRequest<ByteBuf>>> curryCreatePost(
-        @NotNull final URI mesosUri,
-        @NotNull final MessageCodec<Send> sendCodec,
-        @NotNull final MessageCodec<Receive> receiveCodec,
-        @NotNull final UserAgent userAgent,
-        @NotNull final AtomicReference<String> mesosStreamId
-    ) {
+            @NotNull final URI mesosUri,
+            @NotNull final MessageCodec<Send> sendCodec,
+            @NotNull final MessageCodec<Receive> receiveCodec,
+            @NotNull final UserAgent userAgent,
+            @NotNull final AtomicReference<String> mesosStreamId,
+            Supplier<Map<String, String>> headerSupplier) {
         return (Send s) -> {
             final byte[] bytes = sendCodec.encode(s);
             HttpClientRequest<ByteBuf> request = HttpClientRequest.createPost(mesosUri.getPath())
                 .withHeader("User-Agent", userAgent.toString())
                 .withHeader("Content-Type", sendCodec.mediaType())
                 .withHeader("Accept", receiveCodec.mediaType());
+
+            if (headerSupplier != null) {
+                Map<String, String> headers = headerSupplier.get();
+                if (headers != null) {
+                    for (String header : headers.keySet()) {
+                        request = request.withHeader(header, headers.get(header));
+                    }
+                }
+            }
 
             final String streamId = mesosStreamId.get();
             if (streamId != null) {
